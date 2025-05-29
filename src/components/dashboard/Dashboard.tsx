@@ -20,19 +20,21 @@ const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const renderActiveView = () => {
+    const userRole = userProfile?.role || 'other_staff';
+    
     switch (activeView) {
       case 'home':
-        return <DashboardHome userProfile={userProfile} />;
+        return <DashboardHome userRole={userRole} />;
       case 'students':
-        return <StudentProfiles userProfile={userProfile} />;
+        return <StudentProfiles userRole={userRole} />;
       case 'visits':
-        return <ClinicVisits userProfile={userProfile} />;
+        return <ClinicVisits userRole={userRole} />;
       case 'medication':
-        return <MedicationInventory userProfile={userProfile} />;
+        return <MedicationInventory userRole={userRole} />;
       case 'reports':
-        return <Reports userProfile={userProfile} />;
+        return <Reports userRole={userRole} />;
       default:
-        return <DashboardHome userProfile={userProfile} />;
+        return <DashboardHome userRole={userRole} />;
     }
   };
 
