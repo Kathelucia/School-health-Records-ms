@@ -1,6 +1,6 @@
 
 import { Button } from '@/components/ui/button';
-import { LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu, Bell, User } from 'lucide-react';
 
 interface HeaderProps {
   userProfile: any;
@@ -20,14 +20,25 @@ const Header = ({ userProfile, onLogout, onToggleSidebar }: HeaderProps) => {
     }
   };
 
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'nurse': return 'bg-green-100 text-green-800';
+      case 'clinical_officer': return 'bg-blue-100 text-blue-800';
+      case 'it_support': return 'bg-purple-100 text-purple-800';
+      case 'admin': return 'bg-red-100 text-red-800';
+      case 'other_staff': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
+    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
       <div className="flex items-center space-x-4">
         <Button
           variant="ghost"
           size="sm"
           onClick={onToggleSidebar}
-          className="lg:hidden"
+          className="lg:hidden hover:bg-gray-100 transition-colors duration-200"
         >
           <Menu className="w-4 h-4" />
         </Button>
@@ -35,31 +46,54 @@ const Header = ({ userProfile, onLogout, onToggleSidebar }: HeaderProps) => {
           <h1 className="text-xl font-semibold text-gray-900">
             Health Records Management
           </h1>
-          <p className="text-sm text-gray-500">
-            {new Date().toLocaleDateString('en-KE', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </p>
+          <div className="flex items-center space-x-2">
+            <p className="text-sm text-gray-500">
+              {new Date().toLocaleDateString('en-KE', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </p>
+            <span className="text-xs text-green-600">🇰🇪</span>
+          </div>
         </div>
       </div>
 
       <div className="flex items-center space-x-4">
-        <div className="text-right">
-          <div className="text-sm font-medium text-gray-900">
-            {userProfile?.full_name || 'User'}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="hover:bg-gray-100 transition-colors duration-200"
+        >
+          <Bell className="w-4 h-4" />
+        </Button>
+
+        <div className="flex items-center space-x-3">
+          <div className="text-right">
+            <div className="flex items-center space-x-2">
+              <div className="text-sm font-medium text-gray-900">
+                {userProfile?.full_name || 'User'}
+              </div>
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(userProfile?.role)}`}>
+                {getRoleDisplayName(userProfile?.role)}
+              </span>
+            </div>
+            <div className="text-xs text-gray-500">
+              ID: {userProfile?.employee_id || 'N/A'} • {userProfile?.department || 'General'}
+            </div>
           </div>
-          <div className="text-xs text-gray-500">
-            {getRoleDisplayName(userProfile?.role)} • {userProfile?.employee_id || 'N/A'}
+          
+          <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-blue-600 rounded-full flex items-center justify-center">
+            <User className="w-4 h-4 text-white" />
           </div>
         </div>
+
         <Button
           variant="outline"
           size="sm"
           onClick={onLogout}
-          className="text-red-600 border-red-200 hover:bg-red-50"
+          className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-all duration-200"
         >
           <LogOut className="w-4 h-4 mr-2" />
           Logout
