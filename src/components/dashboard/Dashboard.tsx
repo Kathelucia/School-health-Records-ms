@@ -9,30 +9,30 @@ import MedicationInventory from '../medication/MedicationInventory';
 import Reports from '../reports/Reports';
 
 interface DashboardProps {
-  userRole: 'nurse' | 'admin';
+  userProfile: any;
   onLogout: () => void;
 }
 
 type ActiveView = 'home' | 'students' | 'visits' | 'medication' | 'reports';
 
-const Dashboard = ({ userRole, onLogout }: DashboardProps) => {
+const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
   const [activeView, setActiveView] = useState<ActiveView>('home');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const renderActiveView = () => {
     switch (activeView) {
       case 'home':
-        return <DashboardHome userRole={userRole} />;
+        return <DashboardHome userProfile={userProfile} />;
       case 'students':
-        return <StudentProfiles userRole={userRole} />;
+        return <StudentProfiles userProfile={userProfile} />;
       case 'visits':
-        return <ClinicVisits userRole={userRole} />;
+        return <ClinicVisits userProfile={userProfile} />;
       case 'medication':
-        return <MedicationInventory userRole={userRole} />;
+        return <MedicationInventory userProfile={userProfile} />;
       case 'reports':
-        return <Reports userRole={userRole} />;
+        return <Reports userProfile={userProfile} />;
       default:
-        return <DashboardHome userRole={userRole} />;
+        return <DashboardHome userProfile={userProfile} />;
     }
   };
 
@@ -41,13 +41,13 @@ const Dashboard = ({ userRole, onLogout }: DashboardProps) => {
       <Sidebar
         activeView={activeView}
         setActiveView={setActiveView}
-        userRole={userRole}
+        userProfile={userProfile}
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
-          userRole={userRole}
+          userProfile={userProfile}
           onLogout={onLogout}
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
         />

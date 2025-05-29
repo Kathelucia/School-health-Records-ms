@@ -3,12 +3,23 @@ import { Button } from '@/components/ui/button';
 import { LogOut, Menu } from 'lucide-react';
 
 interface HeaderProps {
-  userRole: 'nurse' | 'admin';
+  userProfile: any;
   onLogout: () => void;
   onToggleSidebar: () => void;
 }
 
-const Header = ({ userRole, onLogout, onToggleSidebar }: HeaderProps) => {
+const Header = ({ userProfile, onLogout, onToggleSidebar }: HeaderProps) => {
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'nurse': return 'School Nurse';
+      case 'clinical_officer': return 'Clinical Officer';
+      case 'it_support': return 'IT Support';
+      case 'admin': return 'System Administrator';
+      case 'other_staff': return 'Staff Member';
+      default: return 'User';
+    }
+  };
+
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
       <div className="flex items-center space-x-4">
@@ -25,7 +36,7 @@ const Header = ({ userRole, onLogout, onToggleSidebar }: HeaderProps) => {
             Health Records Management
           </h1>
           <p className="text-sm text-gray-500">
-            {new Date().toLocaleDateString('en-US', { 
+            {new Date().toLocaleDateString('en-KE', { 
               weekday: 'long', 
               year: 'numeric', 
               month: 'long', 
@@ -38,9 +49,11 @@ const Header = ({ userRole, onLogout, onToggleSidebar }: HeaderProps) => {
       <div className="flex items-center space-x-4">
         <div className="text-right">
           <div className="text-sm font-medium text-gray-900">
-            {userRole === 'admin' ? 'System Administrator' : 'School Nurse'}
+            {userProfile?.full_name || 'User'}
           </div>
-          <div className="text-xs text-gray-500">Authorized Personnel</div>
+          <div className="text-xs text-gray-500">
+            {getRoleDisplayName(userProfile?.role)} • {userProfile?.employee_id || 'N/A'}
+          </div>
         </div>
         <Button
           variant="outline"

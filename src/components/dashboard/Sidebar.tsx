@@ -15,21 +15,70 @@ import {
 interface SidebarProps {
   activeView: string;
   setActiveView: (view: 'home' | 'students' | 'visits' | 'medication' | 'reports') => void;
-  userRole: 'nurse' | 'admin';
+  userProfile: any;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
 }
 
-const Sidebar = ({ activeView, setActiveView, userRole, collapsed, setCollapsed }: SidebarProps) => {
+const Sidebar = ({ activeView, setActiveView, userProfile, collapsed, setCollapsed }: SidebarProps) => {
   const menuItems = [
     { id: 'home', label: 'Dashboard', icon: Home },
-    { id: 'students', label: 'Student Profiles', icon: Users },
-    { id: 'visits', label: 'Clinic Visits', icon: Stethoscope },
-    { id: 'medication', label: 'Medication', icon: Pill },
-    { id: 'reports', label: 'Reports', icon: FileText, adminOnly: true },
+    { 
+      id: 'students', 
+      label: 'Student Profiles', 
+      icon: Users,
+      medicalOnly: true 
+    },
+    { 
+      id: 'visits', 
+      label: 'Clinic Visits', 
+      icon: Stethoscope,
+      medicalOnly: true 
+    },
+    { 
+      id: 'medication', 
+      label: 'Medication', 
+      icon: Pill,
+      medicalOnly: true 
+    },
+    { 
+      id: 'reports', 
+      label: 'Reports', 
+      icon: FileText, 
+      adminOnly: true 
+    },
   ];
 
-  const visibleItems = menuItems.filter(item => !item.adminOnly || userRole === 'admin');
+  const isMedicalStaff = ['nurse', 'clinical_officer', 'admin'].includes(userProfile?.role);
+  const isAdmin = userProfile?.role === 'admin';
+
+  const visibleItems = menuItems.filter(item => {
+    if (item.medicalOnly && !isMedicalStaff) return false;
+    if (item.adminOnly && !isAdmin) return false;
+    return true;
+  });
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'nurse': return 'bg-green-100 text-green-800';
+      case 'clinical_officer': return 'bg-blue-100 text-blue-800';
+      case 'it_support': return 'bg-purple-100 text-purple-800';
+      case 'admin': return 'bg-red-100 text-red-800';
+      case 'other_staff': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'nurse': return 'Nurse';
+      case 'clinical_officer': return 'Clinical Officer';
+      case 'it_support': return 'IT Support';
+      case 'admin': return 'Administrator';
+      case 'other_staff': return 'Staff';
+      default: return 'User';
+    }
+  };
 
   return (
     <div className={cn(
@@ -42,7 +91,10 @@ const Sidebar = ({ activeView, setActiveView, userRole, collapsed, setCollapsed 
           {!collapsed && (
             <div className="flex items-center space-x-2">
               <Heart className="w-6 h-6 text-blue-600" />
-              <span className="font-bold text-gray-900">SHRMS</span>
+              <div>
+                <span className="font-bold text-gray-900 text-sm">SHRMS</span>
+                <div className="text-xs text-gray-500">🇰🇪 Kenya</div>
+              </div>
             </div>
           )}
           <Button
@@ -82,10 +134,18 @@ const Sidebar = ({ activeView, setActiveView, userRole, collapsed, setCollapsed 
       {/* User Role Badge */}
       {!collapsed && (
         <div className="p-4 border-t border-gray-200">
-          <div className="text-xs text-gray-500 uppercase tracking-wide">Role</div>
-          <div className="mt-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
-            {userRole === 'admin' ? 'Administrator' : 'Nurse'}
+          <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Role</div>
+          <div className={cn(
+            "px-2 py-1 rounded text-sm font-medium",
+            getRoleColor(userProfile?.role || 'other_staff')
+          )}>
+            {getRoleDisplayName(userProfile?.role || 'other_staff')}
           </div>
+          {userProfile?.department && (
+            <div className="text-xs text-gray-500 mt-1">
+              {userProfile.department}
+            </div>
+          )}
         </div>
       )}
     </div>
