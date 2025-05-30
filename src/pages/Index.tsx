@@ -35,10 +35,10 @@ const Index = () => {
                   id: session.user.id,
                   email: session.user.email || '',
                   full_name: session.user.user_metadata?.full_name || session.user.email || 'User',
-                  role: 'other_staff',
-                  phone_number: null,
-                  employee_id: null,
-                  department: null
+                  role: 'other_staff' as const,
+                  phone_number: session.user.user_metadata?.phone_number || null,
+                  employee_id: session.user.user_metadata?.employee_id || null,
+                  department: session.user.user_metadata?.department || null
                 };
                 
                 const { data: newProfile, error: createError } = await supabase
@@ -62,7 +62,7 @@ const Index = () => {
                 id: session.user.id,
                 email: session.user.email || '',
                 full_name: session.user.user_metadata?.full_name || session.user.email || 'User',
-                role: 'other_staff'
+                role: 'other_staff' as const
               };
               setUserProfile(fallbackProfile);
             }
