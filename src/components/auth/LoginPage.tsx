@@ -45,14 +45,6 @@ const LoginPage = () => {
     return true;
   };
 
-  const cleanupAuthState = () => {
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
-  };
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -61,8 +53,6 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      cleanupAuthState();
-
       if (isSignUp) {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -82,11 +72,11 @@ const LoginPage = () => {
           } else if (error.message.includes('Invalid email')) {
             toast.error('Please enter a valid email address.');
           } else {
-            toast.error('Signup failed. Please try again.');
+            toast.error(error.message || 'Signup failed. Please try again.');
           }
         } else if (data.user) {
           if (data.user.email_confirmed_at) {
-            toast.success('Account created! You can now sign in.');
+            toast.success('Account created successfully! You can now sign in.');
             setIsSignUp(false);
           } else {
             setEmailSent(true);
@@ -105,13 +95,10 @@ const LoginPage = () => {
           } else if (error.message.includes('Email not confirmed')) {
             toast.error('Please verify your email address before signing in.');
           } else {
-            toast.error('Sign in failed. Please try again.');
+            toast.error(error.message || 'Sign in failed. Please try again.');
           }
         } else if (data.user) {
           toast.success('Welcome! Loading dashboard...');
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 1000);
         }
       }
     } catch (error: any) {
