@@ -13,7 +13,6 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
@@ -22,7 +21,6 @@ const Index = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Defer profile fetching to prevent deadlocks
           setTimeout(async () => {
             try {
               const { data: profile, error } = await supabase
@@ -31,36 +29,42 @@ const Index = () => {
                 .eq('id', session.user.id)
                 .maybeSingle();
               
-              if (error) {
-                console.error('Error fetching profile:', error);
-                // Create profile if it doesn't exist
-                if (error.code === 'PGRST116') {
-                  console.log('Profile not found, creating new profile...');
-                  const { data: newProfile, error: createError } = await supabase
-                    .from('profiles')
-                    .insert({
-                      id: session.user.id,
-                      email: session.user.email || '',
-                      full_name: session.user.user_metadata?.full_name || session.user.email || '',
-                      role: session.user.user_metadata?.role || 'other_staff',
-                      phone_number: session.user.user_metadata?.phone_number,
-                      employee_id: session.user.user_metadata?.employee_id,
-                      department: session.user.user_metadata?.department
-                    })
-                    .select()
-                    .single();
-                  
-                  if (createError) {
-                    console.error('Error creating profile:', createError);
-                  } else {
-                    setUserProfile(newProfile);
-                  }
+              if (error || !profile) {
+                console.log('Profile not found, creating basic profile...');
+                const basicProfile = {
+                  id: session.user.id,
+                  email: session.user.email || '',
+                  full_name: session.user.user_metadata?.full_name || session.user.email || 'User',
+                  role: 'other_staff',
+                  phone_number: null,
+                  employee_id: null,
+                  department: null
+                };
+                
+                const { data: newProfile, error: createError } = await supabase
+                  .from('profiles')
+                  .insert(basicProfile)
+                  .select()
+                  .single();
+                
+                if (createError) {
+                  console.error('Error creating profile:', createError);
+                  setUserProfile(basicProfile);
+                } else {
+                  setUserProfile(newProfile);
                 }
-              } else if (profile) {
+              } else {
                 setUserProfile(profile);
               }
             } catch (err) {
               console.error('Profile fetch error:', err);
+              const fallbackProfile = {
+                id: session.user.id,
+                email: session.user.email || '',
+                full_name: session.user.user_metadata?.full_name || session.user.email || 'User',
+                role: 'other_staff'
+              };
+              setUserProfile(fallbackProfile);
             }
           }, 100);
         } else {
@@ -70,7 +74,6 @@ const Index = () => {
       }
     );
 
-    // Check for existing session
     const checkSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -96,26 +99,21 @@ const Index = () => {
 
   const handleLogout = async () => {
     try {
-      // Clear local state first
       setUser(null);
       setSession(null);
       setUserProfile(null);
       
-      // Clear auth storage
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
           localStorage.removeItem(key);
         }
       });
 
-      // Sign out from Supabase
       await supabase.auth.signOut({ scope: 'global' });
       
-      // Force page reload for clean state
       window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
-      // Force reload anyway
       window.location.href = '/';
     }
   };
@@ -129,12 +127,10 @@ const Index = () => {
     );
   }
 
-  // Show login if no user
   if (!user) {
     return <LoginPage />;
   }
 
-  // If user exists but no profile, show loading (profile might be fetching)
   if (user && !userProfile) {
     return (
       <LoadingSpinner 
