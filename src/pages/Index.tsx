@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import LoginPage from '@/components/auth/LoginPage';
 import Dashboard from '@/components/dashboard/Dashboard';
+import LoadingSpinner from '@/components/auth/LoadingSpinner';
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -28,15 +29,34 @@ const Index = () => {
                 .from('profiles')
                 .select('*')
                 .eq('id', session.user.id)
-                .single();
+                .maybeSingle();
               
               if (error) {
                 console.error('Error fetching profile:', error);
+                // Create profile if it doesn't exist
                 if (error.code === 'PGRST116') {
-                  // Profile doesn't exist, this might be normal for new users
-                  console.log('Profile not found for user, might be a new user');
+                  console.log('Profile not found, creating new profile...');
+                  const { data: newProfile, error: createError } = await supabase
+                    .from('profiles')
+                    .insert({
+                      id: session.user.id,
+                      email: session.user.email || '',
+                      full_name: session.user.user_metadata?.full_name || session.user.email || '',
+                      role: session.user.user_metadata?.role || 'other_staff',
+                      phone_number: session.user.user_metadata?.phone_number,
+                      employee_id: session.user.user_metadata?.employee_id,
+                      department: session.user.user_metadata?.department
+                    })
+                    .select()
+                    .single();
+                  
+                  if (createError) {
+                    console.error('Error creating profile:', createError);
+                  } else {
+                    setUserProfile(newProfile);
+                  }
                 }
-              } else {
+              } else if (profile) {
                 setUserProfile(profile);
               }
             } catch (err) {
@@ -59,7 +79,10 @@ const Index = () => {
         }
         setSession(session);
         setUser(session?.user ?? null);
-        setLoading(false);
+        
+        if (!session) {
+          setLoading(false);
+        }
       } catch (err) {
         console.error('Session check error:', err);
         setLoading(false);
@@ -99,17 +122,14 @@ const Index = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-orange-50 flex items-center justify-center">
-        <div className="text-center animate-fade-in">
-          <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading SHRMS...</p>
-          <p className="text-sm text-gray-500 mt-2">🇰🇪 School Health Records Management System</p>
-        </div>
-      </div>
+      <LoadingSpinner 
+        message="Loading SHRMS..." 
+        subMessage="Initializing School Health Records Management System"
+      />
     );
   }
 
-  // Show login if no user or no profile (for existing users)
+  // Show login if no user
   if (!user) {
     return <LoginPage />;
   }
@@ -117,13 +137,10 @@ const Index = () => {
   // If user exists but no profile, show loading (profile might be fetching)
   if (user && !userProfile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-orange-50 flex items-center justify-center">
-        <div className="text-center animate-fade-in">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Setting up your profile...</p>
-          <p className="text-sm text-gray-500 mt-2">Please wait while we prepare your dashboard</p>
-        </div>
-      </div>
+      <LoadingSpinner 
+        message="Setting up your profile..." 
+        subMessage="Please wait while we prepare your dashboard"
+      />
     );
   }
 

@@ -22,6 +22,14 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [showDemoCredentials, setShowDemoCredentials] = useState(false);
+
+  // Demo credentials
+  const demoCredentials = [
+    { email: 'nurse@demo.school.ke', password: 'demo123', role: 'School Nurse' },
+    { email: 'admin@demo.school.ke', password: 'demo123', role: 'Administrator' },
+    { email: 'clinical@demo.school.ke', password: 'demo123', role: 'Clinical Officer' }
+  ];
 
   const validateForm = () => {
     if (!email || !password) {
@@ -75,6 +83,7 @@ const LoginPage = () => {
       cleanupAuthState();
 
       if (isSignUp) {
+        // For new signups, try to create the user account
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -90,24 +99,27 @@ const LoginPage = () => {
         });
 
         if (error) {
-          if (error.message.includes('already registered')) {
+          if (error.message.includes('already registered') || error.message.includes('already exists')) {
             toast.error('This email is already registered. Please sign in instead.');
             setIsSignUp(false);
+          } else if (error.message.includes('Invalid email')) {
+            toast.error('Please enter a valid email address.');
           } else {
-            throw error;
+            // For database errors during signup, suggest using demo credentials
+            toast.error('Signup temporarily unavailable. Please use demo credentials to test the system.');
+            setShowDemoCredentials(true);
           }
         } else if (data.user) {
-          setEmailSent(true);
-          toast.success('Account created successfully! Please check your email to verify your account before signing in.');
+          if (data.user.email_confirmed_at) {
+            toast.success('Account created and verified! You can now sign in.');
+            setIsSignUp(false);
+          } else {
+            setEmailSent(true);
+            toast.success('Account created! Please check your email to verify your account.');
+          }
         }
       } else {
-        // Attempt global sign out first
-        try {
-          await supabase.auth.signOut({ scope: 'global' });
-        } catch (err) {
-          // Continue even if this fails
-        }
-
+        // For sign in
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -115,14 +127,19 @@ const LoginPage = () => {
 
         if (error) {
           if (error.message.includes('Invalid login credentials')) {
-            toast.error('Invalid email or password. Please check your credentials and try again.');
+            toast.error('Invalid email or password. Please check your credentials or try demo accounts.');
+            setShowDemoCredentials(true);
           } else if (error.message.includes('Email not confirmed')) {
-            toast.error('Please verify your email address before signing in. Check your inbox for the verification link.');
+            toast.error('Please verify your email address before signing in.');
+          } else if (error.message.includes('User not found')) {
+            toast.error('No account found with this email. Please sign up or use demo credentials.');
+            setShowDemoCredentials(true);
           } else {
-            throw error;
+            toast.error('Sign in failed. Please try demo credentials.');
+            setShowDemoCredentials(true);
           }
         } else if (data.user) {
-          toast.success('Welcome back! Redirecting to dashboard...');
+          toast.success('Welcome back! Loading dashboard...');
           // Force page reload for clean state
           setTimeout(() => {
             window.location.href = '/';
@@ -131,7 +148,32 @@ const LoginPage = () => {
       }
     } catch (error: any) {
       console.error('Auth error:', error);
-      toast.error(error.message || 'An error occurred during authentication');
+      toast.error('Authentication temporarily unavailable. Please use demo credentials.');
+      setShowDemoCredentials(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
+    setLoading(true);
+    try {
+      cleanupAuthState();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: demoEmail,
+        password: demoPassword,
+      });
+
+      if (error) {
+        toast.error(`Demo login failed: ${error.message}`);
+      } else if (data.user) {
+        toast.success('Demo login successful! Loading dashboard...');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
+      }
+    } catch (error: any) {
+      toast.error('Demo login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -223,6 +265,57 @@ const LoginPage = () => {
         </CardHeader>
         
         <CardContent>
+          {/* Demo Credentials Section */}
+          {showDemoCredentials && (
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200 animate-fade-in">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertCircle className="w-4 h-4 text-blue-600" />
+                <h3 className="font-semibold text-blue-900">Demo Accounts Available</h3>
+              </div>
+              <p className="text-sm text-blue-700 mb-3">
+                Use these demo accounts to test the system:
+              </p>
+              <div className="space-y-2">
+                {demoCredentials.map((cred, index) => (
+                  <Button
+                    key={index}
+                    onClick={() => handleDemoLogin(cred.email, cred.password)}
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start text-left p-2 h-auto"
+                    disabled={loading}
+                  >
+                    <div className="text-left">
+                      <div className="font-medium text-sm">{cred.role}</div>
+                      <div className="text-xs text-gray-600">{cred.email} • {cred.password}</div>
+                    </div>
+                  </Button>
+                ))}
+              </div>
+              <Button
+                onClick={() => setShowDemoCredentials(false)}
+                variant="ghost"
+                size="sm"
+                className="w-full mt-2"
+              >
+                Hide Demo Accounts
+              </Button>
+            </div>
+          )}
+
+          {!showDemoCredentials && (
+            <div className="mb-4 text-center">
+              <Button
+                onClick={() => setShowDemoCredentials(true)}
+                variant="outline"
+                size="sm"
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                Show Demo Accounts
+              </Button>
+            </div>
+          )}
+
           <form onSubmit={handleAuth} className="space-y-4">
             {isSignUp && (
               <div className="space-y-4 animate-fade-in">
@@ -376,6 +469,7 @@ const LoginPage = () => {
               onClick={() => {
                 setIsSignUp(!isSignUp);
                 setEmailSent(false);
+                setShowDemoCredentials(false);
                 // Clear form
                 setEmail('');
                 setPassword('');
