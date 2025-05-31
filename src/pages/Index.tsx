@@ -24,6 +24,7 @@ const Index = () => {
           // Create or fetch user profile after authentication
           setTimeout(async () => {
             try {
+              console.log('Fetching profile for user:', session.user.id);
               // First try to fetch existing profile
               const { data: profile, error } = await supabase
                 .from('profiles')
@@ -45,26 +46,22 @@ const Index = () => {
                   role: 'other_staff'
                 };
                 
-                try {
-                  const { data: createdProfile, error: createError } = await supabase
-                    .from('profiles')
-                    .insert(newProfile)
-                    .select()
-                    .single();
-                  
-                  if (createError) {
-                    console.error('Error creating profile:', createError);
-                    // Use fallback profile if database insert fails
-                    setUserProfile(newProfile);
-                  } else {
-                    setUserProfile(createdProfile);
-                  }
-                } catch (insertError) {
-                  console.error('Profile creation failed:', insertError);
-                  // Use fallback profile
+                const { data: createdProfile, error: createError } = await supabase
+                  .from('profiles')
+                  .insert(newProfile)
+                  .select()
+                  .single();
+                
+                if (createError) {
+                  console.error('Error creating profile:', createError);
+                  // Use fallback profile if database insert fails
                   setUserProfile(newProfile);
+                } else {
+                  console.log('Profile created successfully:', createdProfile);
+                  setUserProfile(createdProfile);
                 }
               } else {
+                console.log('Profile found:', profile);
                 setUserProfile(profile);
               }
             } catch (err) {
@@ -111,6 +108,7 @@ const Index = () => {
 
   const handleLogout = async () => {
     try {
+      console.log('Logging out user...');
       setUser(null);
       setSession(null);
       setUserProfile(null);

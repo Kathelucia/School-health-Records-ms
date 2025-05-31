@@ -17,7 +17,6 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
 
   const validateForm = () => {
     if (!email || !password) {
@@ -54,7 +53,8 @@ const LoginPage = () => {
 
     try {
       if (isSignUp) {
-        // Clean signup approach - let the app handle profile creation
+        console.log('Attempting to sign up user:', email);
+        
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -73,10 +73,10 @@ const LoginPage = () => {
           } else if (error.message.includes('Invalid email')) {
             toast.error('Please enter a valid email address.');
           } else {
-            toast.error('Account creation failed. Please try again.');
+            toast.error(`Account creation failed: ${error.message}`);
           }
         } else if (data.user) {
-          // Show success message regardless of email confirmation
+          console.log('User created successfully:', data.user.id);
           toast.success('Account created successfully! You can now sign in.');
           setIsSignUp(false);
           // Clear form
@@ -86,6 +86,8 @@ const LoginPage = () => {
           setFullName('');
         }
       } else {
+        console.log('Attempting to sign in user:', email);
+        
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -98,9 +100,10 @@ const LoginPage = () => {
           } else if (error.message.includes('Email not confirmed')) {
             toast.error('Please verify your email address before signing in.');
           } else {
-            toast.error('Sign in failed. Please try again.');
+            toast.error(`Sign in failed: ${error.message}`);
           }
         } else if (data.user) {
+          console.log('User signed in successfully:', data.user.id);
           toast.success('Welcome! Loading dashboard...');
         }
       }
@@ -111,65 +114,6 @@ const LoginPage = () => {
       setLoading(false);
     }
   };
-
-  const handleResendVerification = async () => {
-    if (!email) {
-      toast.error('Please enter your email address');
-      return;
-    }
-
-    try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: email,
-      });
-
-      if (error) throw error;
-      toast.success('Verification email sent! Please check your inbox.');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to resend verification email');
-    }
-  };
-
-  if (emailSent) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-orange-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-xl animate-fade-in">
-          <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 bg-green-600 rounded-full flex items-center justify-center animate-scale-in">
-              <CheckCircle className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <CardTitle className="text-2xl font-bold text-gray-900">Check Your Email</CardTitle>
-              <CardDescription className="text-gray-600">
-                We've sent a verification link to {email}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-center text-sm text-gray-600">
-              <p>Please click the verification link in your email to activate your account.</p>
-              <p className="mt-2">Didn't receive the email?</p>
-            </div>
-            <Button 
-              onClick={handleResendVerification}
-              variant="outline" 
-              className="w-full"
-            >
-              Resend Verification Email
-            </Button>
-            <Button 
-              onClick={() => setEmailSent(false)}
-              variant="ghost" 
-              className="w-full"
-            >
-              Back to Sign In
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-orange-50 flex items-center justify-center p-4">
@@ -294,7 +238,6 @@ const LoginPage = () => {
               type="button"
               onClick={() => {
                 setIsSignUp(!isSignUp);
-                setEmailSent(false);
                 setEmail('');
                 setPassword('');
                 setConfirmPassword('');
