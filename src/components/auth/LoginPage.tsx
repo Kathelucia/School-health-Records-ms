@@ -54,34 +54,36 @@ const LoginPage = () => {
 
     try {
       if (isSignUp) {
+        // Clean signup approach - let the app handle profile creation
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              full_name: fullName,
-              role: 'other_staff'
+              full_name: fullName
             }
           }
         });
 
         if (error) {
+          console.error('Signup error:', error);
           if (error.message.includes('already registered') || error.message.includes('already exists')) {
             toast.error('This email is already registered. Please sign in instead.');
             setIsSignUp(false);
           } else if (error.message.includes('Invalid email')) {
             toast.error('Please enter a valid email address.');
           } else {
-            toast.error(error.message || 'Signup failed. Please try again.');
+            toast.error('Account creation failed. Please try again.');
           }
         } else if (data.user) {
-          if (data.user.email_confirmed_at) {
-            toast.success('Account created successfully! You can now sign in.');
-            setIsSignUp(false);
-          } else {
-            setEmailSent(true);
-            toast.success('Account created! Please check your email to verify your account.');
-          }
+          // Show success message regardless of email confirmation
+          toast.success('Account created successfully! You can now sign in.');
+          setIsSignUp(false);
+          // Clear form
+          setEmail('');
+          setPassword('');
+          setConfirmPassword('');
+          setFullName('');
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -90,12 +92,13 @@ const LoginPage = () => {
         });
 
         if (error) {
+          console.error('Login error:', error);
           if (error.message.includes('Invalid login credentials')) {
             toast.error('Invalid email or password. Please check your credentials.');
           } else if (error.message.includes('Email not confirmed')) {
             toast.error('Please verify your email address before signing in.');
           } else {
-            toast.error(error.message || 'Sign in failed. Please try again.');
+            toast.error('Sign in failed. Please try again.');
           }
         } else if (data.user) {
           toast.success('Welcome! Loading dashboard...');

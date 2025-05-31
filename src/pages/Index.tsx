@@ -21,61 +21,59 @@ const Index = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Defer profile fetching to avoid deadlocks
+          // Create or fetch user profile after authentication
           setTimeout(async () => {
             try {
+              // First try to fetch existing profile
               const { data: profile, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', session.user.id)
                 .maybeSingle();
               
-              if (error) {
+              if (error && error.code !== 'PGRST116') {
                 console.error('Error fetching profile:', error);
-                // Create a fallback profile if none exists
-                const fallbackProfile = {
+              }
+              
+              if (!profile) {
+                console.log('No profile found, creating one...');
+                // Create profile manually if trigger failed
+                const newProfile = {
                   id: session.user.id,
                   email: session.user.email || '',
-                  full_name: session.user.user_metadata?.full_name || session.user.email || 'User',
-                  role: 'other_staff'
-                };
-                setUserProfile(fallbackProfile);
-              } else if (!profile) {
-                console.log('No profile found, creating basic profile...');
-                // Try to create profile via trigger or manually
-                const basicProfile = {
-                  id: session.user.id,
-                  email: session.user.email || '',
-                  full_name: session.user.user_metadata?.full_name || session.user.email || 'User',
+                  full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
                   role: 'other_staff'
                 };
                 
                 try {
-                  const { data: newProfile, error: createError } = await supabase
+                  const { data: createdProfile, error: createError } = await supabase
                     .from('profiles')
-                    .insert(basicProfile)
+                    .insert(newProfile)
                     .select()
                     .single();
                   
                   if (createError) {
                     console.error('Error creating profile:', createError);
-                    setUserProfile(basicProfile);
-                  } else {
+                    // Use fallback profile if database insert fails
                     setUserProfile(newProfile);
+                  } else {
+                    setUserProfile(createdProfile);
                   }
                 } catch (insertError) {
                   console.error('Profile creation failed:', insertError);
-                  setUserProfile(basicProfile);
+                  // Use fallback profile
+                  setUserProfile(newProfile);
                 }
               } else {
                 setUserProfile(profile);
               }
             } catch (err) {
-              console.error('Profile fetch error:', err);
+              console.error('Profile handling error:', err);
+              // Create fallback profile
               const fallbackProfile = {
                 id: session.user.id,
                 email: session.user.email || '',
-                full_name: session.user.user_metadata?.full_name || session.user.email || 'User',
+                full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
                 role: 'other_staff'
               };
               setUserProfile(fallbackProfile);
