@@ -21,6 +21,7 @@ const Index = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          // Defer profile fetching to avoid deadlocks
           setTimeout(async () => {
             try {
               const { data: profile, error } = await supabase
@@ -29,29 +30,42 @@ const Index = () => {
                 .eq('id', session.user.id)
                 .maybeSingle();
               
-              if (error || !profile) {
-                console.log('Profile not found, creating basic profile...');
+              if (error) {
+                console.error('Error fetching profile:', error);
+                // Create a fallback profile if none exists
+                const fallbackProfile = {
+                  id: session.user.id,
+                  email: session.user.email || '',
+                  full_name: session.user.user_metadata?.full_name || session.user.email || 'User',
+                  role: 'other_staff'
+                };
+                setUserProfile(fallbackProfile);
+              } else if (!profile) {
+                console.log('No profile found, creating basic profile...');
+                // Try to create profile via trigger or manually
                 const basicProfile = {
                   id: session.user.id,
                   email: session.user.email || '',
                   full_name: session.user.user_metadata?.full_name || session.user.email || 'User',
-                  role: 'other_staff' as const,
-                  phone_number: session.user.user_metadata?.phone_number || null,
-                  employee_id: session.user.user_metadata?.employee_id || null,
-                  department: session.user.user_metadata?.department || null
+                  role: 'other_staff'
                 };
                 
-                const { data: newProfile, error: createError } = await supabase
-                  .from('profiles')
-                  .insert(basicProfile)
-                  .select()
-                  .single();
-                
-                if (createError) {
-                  console.error('Error creating profile:', createError);
+                try {
+                  const { data: newProfile, error: createError } = await supabase
+                    .from('profiles')
+                    .insert(basicProfile)
+                    .select()
+                    .single();
+                  
+                  if (createError) {
+                    console.error('Error creating profile:', createError);
+                    setUserProfile(basicProfile);
+                  } else {
+                    setUserProfile(newProfile);
+                  }
+                } catch (insertError) {
+                  console.error('Profile creation failed:', insertError);
                   setUserProfile(basicProfile);
-                } else {
-                  setUserProfile(newProfile);
                 }
               } else {
                 setUserProfile(profile);
@@ -62,7 +76,7 @@ const Index = () => {
                 id: session.user.id,
                 email: session.user.email || '',
                 full_name: session.user.user_metadata?.full_name || session.user.email || 'User',
-                role: 'other_staff' as const
+                role: 'other_staff'
               };
               setUserProfile(fallbackProfile);
             }
@@ -103,6 +117,7 @@ const Index = () => {
       setSession(null);
       setUserProfile(null);
       
+      // Clean up any stored auth data
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
           localStorage.removeItem(key);
@@ -111,6 +126,7 @@ const Index = () => {
 
       await supabase.auth.signOut({ scope: 'global' });
       
+      // Force page reload for clean state
       window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
