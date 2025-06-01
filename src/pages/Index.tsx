@@ -21,29 +21,30 @@ const Index = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Create or fetch user profile after authentication
+          // Defer profile handling to avoid blocking auth state change
           setTimeout(async () => {
             try {
               console.log('Fetching profile for user:', session.user.id);
+              
               // First try to fetch existing profile
-              const { data: profile, error } = await supabase
+              const { data: profile, error: fetchError } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', session.user.id)
                 .maybeSingle();
               
-              if (error && error.code !== 'PGRST116') {
-                console.error('Error fetching profile:', error);
+              if (fetchError) {
+                console.error('Error fetching profile:', fetchError);
               }
               
               if (!profile) {
                 console.log('No profile found, creating one...');
-                // Create profile manually if trigger failed
+                // Create profile if it doesn't exist
                 const newProfile = {
                   id: session.user.id,
                   email: session.user.email || '',
                   full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-                  role: 'other_staff'
+                  role: 'other_staff' as const
                 };
                 
                 const { data: createdProfile, error: createError } = await supabase
@@ -71,7 +72,7 @@ const Index = () => {
                 id: session.user.id,
                 email: session.user.email || '',
                 full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-                role: 'other_staff'
+                role: 'other_staff' as const
               };
               setUserProfile(fallbackProfile);
             }
@@ -113,20 +114,10 @@ const Index = () => {
       setSession(null);
       setUserProfile(null);
       
-      // Clean up any stored auth data
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          localStorage.removeItem(key);
-        }
-      });
-
       await supabase.auth.signOut({ scope: 'global' });
-      
-      // Force page reload for clean state
-      window.location.href = '/';
+      console.log('User logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
-      window.location.href = '/';
     }
   };
 
