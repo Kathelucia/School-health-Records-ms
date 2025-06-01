@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Heart, UserPlus, LogIn, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Shield, Heart, UserPlus, LogIn, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -30,7 +30,7 @@ const LoginPage = () => {
     }
 
     if (isSignUp) {
-      if (!fullName) {
+      if (!fullName.trim()) {
         toast.error('Full name is required');
         return false;
       }
@@ -56,11 +56,11 @@ const LoginPage = () => {
         console.log('Attempting to sign up user:', email);
         
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: {
             data: {
-              full_name: fullName
+              full_name: fullName.trim()
             }
           }
         });
@@ -89,7 +89,7 @@ const LoginPage = () => {
         console.log('Attempting to sign in user:', email);
         
         const { data, error } = await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
 
@@ -104,7 +104,7 @@ const LoginPage = () => {
           }
         } else if (data.user) {
           console.log('User signed in successfully:', data.user.id);
-          toast.success('Welcome! Loading dashboard...');
+          toast.success('Welcome! Loading your dashboard...');
         }
       }
     } catch (error: any) {

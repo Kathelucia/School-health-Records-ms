@@ -285,7 +285,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           phone_number: string | null
-          role: Database["public"]["Enums"]["user_role"]
+          role: Database["public"]["Enums"]["user_role"] | null
           updated_at: string | null
         }
         Insert: {
@@ -297,7 +297,7 @@ export type Database = {
           id: string
           is_active?: boolean | null
           phone_number?: string | null
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string | null
         }
         Update: {
@@ -309,7 +309,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           phone_number?: string | null
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string | null
         }
         Relationships: []
@@ -379,7 +379,6 @@ export type Database = {
           is_active: boolean | null
           parent_guardian_name: string | null
           parent_guardian_phone: string | null
-          parent_guardian_relationship: string | null
           stream: string | null
           student_id: string | null
           sub_county: string | null
@@ -404,7 +403,6 @@ export type Database = {
           is_active?: boolean | null
           parent_guardian_name?: string | null
           parent_guardian_phone?: string | null
-          parent_guardian_relationship?: string | null
           stream?: string | null
           student_id?: string | null
           sub_county?: string | null
@@ -429,7 +427,6 @@ export type Database = {
           is_active?: boolean | null
           parent_guardian_name?: string | null
           parent_guardian_phone?: string | null
-          parent_guardian_relationship?: string | null
           stream?: string | null
           student_id?: string | null
           sub_county?: string | null

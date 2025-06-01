@@ -13,6 +13,8 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('Setting up auth state listener...');
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
@@ -24,7 +26,7 @@ const Index = () => {
           // Defer profile handling to avoid blocking auth state change
           setTimeout(async () => {
             try {
-              console.log('Fetching profile for user:', session.user.id);
+              console.log('Setting up profile for user:', session.user.id);
               
               // First try to fetch existing profile
               const { data: profile, error: fetchError } = await supabase
@@ -33,9 +35,7 @@ const Index = () => {
                 .eq('id', session.user.id)
                 .maybeSingle();
               
-              if (fetchError) {
-                console.error('Error fetching profile:', fetchError);
-              }
+              console.log('Profile fetch result:', { profile, fetchError });
               
               if (!profile) {
                 console.log('No profile found, creating one...');
@@ -86,12 +86,13 @@ const Index = () => {
 
     const checkSession = async () => {
       try {
+        console.log('Checking existing session...');
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
           console.error('Error getting session:', error);
+        } else {
+          console.log('Initial session check:', session?.user?.email || 'No session');
         }
-        setSession(session);
-        setUser(session?.user ?? null);
         
         if (!session) {
           setLoading(false);
@@ -104,7 +105,10 @@ const Index = () => {
 
     checkSession();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log('Cleaning up auth state listener');
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogout = async () => {
