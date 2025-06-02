@@ -28,7 +28,7 @@ const Index = () => {
             try {
               console.log('Setting up profile for user:', session.user.id);
               
-              // First try to fetch existing profile
+              // Try to fetch existing profile
               const { data: profile, error: fetchError } = await supabase
                 .from('profiles')
                 .select('*')
@@ -37,33 +37,58 @@ const Index = () => {
               
               console.log('Profile fetch result:', { profile, fetchError });
               
-              if (!profile) {
-                console.log('No profile found, creating one...');
-                // Create profile if it doesn't exist
-                const newProfile = {
+              if (!profile && !fetchError) {
+                console.log('No profile found, the trigger should have created one. Waiting...');
+                // Wait a moment for the trigger to complete
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Try fetching again
+                const { data: retryProfile, error: retryError } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('id', session.user.id)
+                  .maybeSingle();
+                
+                if (retryProfile) {
+                  console.log('Profile found after retry:', retryProfile);
+                  setUserProfile(retryProfile);
+                } else {
+                  console.log('Profile still not found, creating manually...');
+                  // Create profile manually if trigger failed
+                  const newProfile = {
+                    id: session.user.id,
+                    email: session.user.email || '',
+                    full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+                    role: 'other_staff' as const
+                  };
+                  
+                  const { data: createdProfile, error: createError } = await supabase
+                    .from('profiles')
+                    .insert(newProfile)
+                    .select()
+                    .single();
+                  
+                  if (createError) {
+                    console.error('Error creating profile manually:', createError);
+                    setUserProfile(newProfile);
+                  } else {
+                    console.log('Profile created manually:', createdProfile);
+                    setUserProfile(createdProfile);
+                  }
+                }
+              } else if (profile) {
+                console.log('Profile found:', profile);
+                setUserProfile(profile);
+              } else {
+                console.error('Error fetching profile:', fetchError);
+                // Use fallback profile
+                const fallbackProfile = {
                   id: session.user.id,
                   email: session.user.email || '',
                   full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
                   role: 'other_staff' as const
                 };
-                
-                const { data: createdProfile, error: createError } = await supabase
-                  .from('profiles')
-                  .insert(newProfile)
-                  .select()
-                  .single();
-                
-                if (createError) {
-                  console.error('Error creating profile:', createError);
-                  // Use fallback profile if database insert fails
-                  setUserProfile(newProfile);
-                } else {
-                  console.log('Profile created successfully:', createdProfile);
-                  setUserProfile(createdProfile);
-                }
-              } else {
-                console.log('Profile found:', profile);
-                setUserProfile(profile);
+                setUserProfile(fallbackProfile);
               }
             } catch (err) {
               console.error('Profile handling error:', err);

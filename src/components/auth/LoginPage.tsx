@@ -60,7 +60,8 @@ const LoginPage = () => {
           password,
           options: {
             data: {
-              full_name: fullName.trim()
+              full_name: fullName.trim(),
+              role: 'other_staff'
             }
           }
         });
