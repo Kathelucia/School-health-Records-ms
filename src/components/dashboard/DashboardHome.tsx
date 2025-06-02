@@ -1,190 +1,266 @@
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { 
   Users, 
   Stethoscope, 
   Pill, 
-  AlertTriangle, 
+  FileText, 
+  AlertTriangle,
   TrendingUp,
   Calendar,
-  Plus
+  Activity
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardHomeProps {
-  userRole: 'nurse' | 'admin';
+  userRole: string;
 }
 
 const DashboardHome = ({ userRole }: DashboardHomeProps) => {
-  const stats = [
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    todayVisits: 0,
+    totalMedications: 0,
+    highRiskStudents: 0,
+    recentVisits: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, []);
+
+  const fetchDashboardStats = async () => {
+    try {
+      // Fetch total students
+      const { count: studentsCount } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+
+      // Fetch today's visits
+      const today = new Date().toISOString().split('T')[0];
+      const { count: todayVisitsCount } = await supabase
+        .from('clinic_visits')
+        .select('*', { count: 'exact', head: true })
+        .gte('visit_date', today)
+        .lt('visit_date', today + 'T23:59:59');
+
+      // Fetch medications count
+      const { count: medicationsCount } = await supabase
+        .from('medications')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch high-risk students (those with allergies or chronic conditions)
+      const { count: highRiskCount } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .or('allergies.not.is.null,chronic_conditions.not.is.null');
+
+      // Fetch recent visits
+      const { data: recentVisits } = await supabase
+        .from('clinic_visits')
+        .select(`
+          *,
+          students(full_name, student_id)
+        `)
+        .order('visit_date', { ascending: false })
+        .limit(5);
+
+      setStats({
+        totalStudents: studentsCount || 0,
+        todayVisits: todayVisitsCount || 0,
+        totalMedications: medicationsCount || 0,
+        highRiskStudents: highRiskCount || 0,
+        recentVisits: recentVisits || []
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const statCards = [
     {
-      title: "Total Students",
-      value: "1,247",
+      title: 'Total Students',
+      value: stats.totalStudents,
       icon: Users,
-      trend: "+12 new this month",
-      color: "text-blue-600"
+      description: 'Active student profiles',
+      color: 'text-blue-600'
     },
     {
-      title: "Clinic Visits Today",
-      value: "8",
+      title: "Today's Visits",
+      value: stats.todayVisits,
       icon: Stethoscope,
-      trend: "3 pending follow-ups",
-      color: "text-green-600"
+      description: 'Clinic visits today',
+      color: 'text-green-600'
     },
     {
-      title: "Active Medications",
-      value: "156",
+      title: 'Medications',
+      value: stats.totalMedications,
       icon: Pill,
-      trend: "4 expiring soon",
-      color: "text-purple-600"
+      description: 'Available medications',
+      color: 'text-purple-600'
     },
     {
-      title: "Health Alerts",
-      value: "3",
+      title: 'High-Risk Students',
+      value: stats.highRiskStudents,
       icon: AlertTriangle,
-      trend: "2 high priority",
-      color: "text-red-600"
+      description: 'Students with medical alerts',
+      color: 'text-red-600'
     }
   ];
 
-  const recentActivities = [
-    { time: "10:30 AM", student: "Emma Johnson", action: "Clinic visit - Headache", type: "visit" },
-    { time: "9:45 AM", student: "Michael Chen", action: "Medication administered - Inhaler", type: "medication" },
-    { time: "9:15 AM", student: "Sarah Williams", action: "Health profile updated", type: "profile" },
-    { time: "8:30 AM", student: "David Brown", action: "Emergency contact called", type: "emergency" },
-  ];
-
-  const quickActions = [
-    { label: "New Clinic Visit", icon: Plus, action: "visit" },
-    { label: "Student Search", icon: Users, action: "search" },
-    { label: "Medication Log", icon: Pill, action: "medication" },
-    { label: "Emergency Contacts", icon: AlertTriangle, action: "emergency" },
-  ];
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-center items-center h-32">
+          <div className="text-gray-500">Loading dashboard...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
-      {/* Welcome Section */}
+      {/* Header */}
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Welcome back, {userRole === 'admin' ? 'Administrator' : 'Nurse'}
-        </h2>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          🏥 School Health Records Management System
+        </h1>
         <p className="text-gray-600">
-          Here's an overview of today's health management activities.
+          Welcome to the secure health records platform for school medical personnel
         </p>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <Card key={index} className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className={`w-5 h-5 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-              <p className="text-xs text-gray-500 mt-1">{stat.trend}</p>
-            </CardContent>
-          </Card>
-        ))}
+        {statCards.map((stat) => {
+          const IconComponent = stat.icon;
+          return (
+            <Card key={stat.title}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {stat.title}
+                </CardTitle>
+                <IconComponent className={`h-4 w-4 ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+                <p className="text-xs text-muted-foreground">
+                  {stat.description}
+                </p>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
+      {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Quick Actions */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-blue-600" />
-              Quick Actions
+              <Activity className="w-5 h-5 mr-2" />
+              Recent Clinic Visits
             </CardTitle>
             <CardDescription>
-              Frequently used functions for efficient workflow
+              Latest student visits to the clinic
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              {quickActions.map((action, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center space-y-2 hover:bg-blue-50"
-                >
-                  <action.icon className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm text-center">{action.label}</span>
-                </Button>
-              ))}
-            </div>
+            {stats.recentVisits.length > 0 ? (
+              <div className="space-y-3">
+                {stats.recentVisits.map((visit: any) => (
+                  <div key={visit.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                    <div>
+                      <p className="font-medium">{visit.students?.full_name}</p>
+                      <p className="text-sm text-gray-600">{visit.diagnosis || 'General visit'}</p>
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {new Date(visit.visit_date).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-4">No recent visits</p>
+            )}
           </CardContent>
         </Card>
 
-        {/* Recent Activities */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Calendar className="w-5 h-5 mr-2 text-green-600" />
-              Recent Activities
+              <FileText className="w-5 h-5 mr-2" />
+              System Features
             </CardTitle>
             <CardDescription>
-              Latest clinic visits and health record updates
+              Available functionality in the health records system
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentActivities.map((activity, index) => (
-                <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-gray-50">
-                  <div className="text-xs text-gray-500 mt-1 min-w-[60px]">
-                    {activity.time}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">
-                      {activity.student}
-                    </p>
-                    <p className="text-xs text-gray-600 truncate">
-                      {activity.action}
-                    </p>
-                  </div>
-                  <div className={`w-2 h-2 rounded-full mt-2 ${
-                    activity.type === 'emergency' ? 'bg-red-500' :
-                    activity.type === 'visit' ? 'bg-blue-500' :
-                    activity.type === 'medication' ? 'bg-purple-500' : 'bg-green-500'
-                  }`} />
+              <div className="flex items-center p-3 bg-blue-50 rounded">
+                <Users className="w-5 h-5 text-blue-600 mr-3" />
+                <div>
+                  <p className="font-medium">Student Profiles</p>
+                  <p className="text-sm text-gray-600">Manage comprehensive health records</p>
                 </div>
-              ))}
+              </div>
+              <div className="flex items-center p-3 bg-green-50 rounded">
+                <Stethoscope className="w-5 h-5 text-green-600 mr-3" />
+                <div>
+                  <p className="font-medium">Clinic Visits</p>
+                  <p className="text-sm text-gray-600">Log and track medical consultations</p>
+                </div>
+              </div>
+              <div className="flex items-center p-3 bg-purple-50 rounded">
+                <Pill className="w-5 h-5 text-purple-600 mr-3" />
+                <div>
+                  <p className="font-medium">Medication Inventory</p>
+                  <p className="text-sm text-gray-600">Track medication stock and dispensing</p>
+                </div>
+              </div>
+              <div className="flex items-center p-3 bg-orange-50 rounded">
+                <TrendingUp className="w-5 h-5 text-orange-600 mr-3" />
+                <div>
+                  <p className="font-medium">Health Reports</p>
+                  <p className="text-sm text-gray-600">Generate analytics and compliance reports</p>
+                </div>
+              </div>
             </div>
-            <Button variant="outline" className="w-full mt-4">
-              View All Activities
-            </Button>
           </CardContent>
         </Card>
       </div>
 
-      {/* Health Alerts */}
-      <Card className="border-red-200 bg-red-50">
+      {/* Quick Actions */}
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center text-red-800">
-            <AlertTriangle className="w-5 h-5 mr-2" />
-            Priority Health Alerts
-          </CardTitle>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>
+            Common tasks for medical personnel
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            <div className="p-3 bg-white rounded border border-red-200">
-              <p className="text-sm font-medium text-red-900">
-                Jessica Martinez - Severe Allergy Alert
-              </p>
-              <p className="text-xs text-red-700">
-                Anaphylaxis risk - Peanuts, Tree nuts. EpiPen available.
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+              <Users className="w-8 h-8 text-blue-600 mb-2" />
+              <h3 className="font-medium">Add New Student</h3>
+              <p className="text-sm text-gray-600">Register a new student profile</p>
             </div>
-            <div className="p-3 bg-white rounded border border-orange-200">
-              <p className="text-sm font-medium text-orange-900">
-                Alex Thompson - Medication Expiry
-              </p>
-              <p className="text-xs text-orange-700">
-                Inhaler expires in 3 days. Contact parent for replacement.
-              </p>
+            <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+              <Stethoscope className="w-8 h-8 text-green-600 mb-2" />
+              <h3 className="font-medium">Log Clinic Visit</h3>
+              <p className="text-sm text-gray-600">Record a new medical consultation</p>
+            </div>
+            <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+              <Calendar className="w-8 h-8 text-purple-600 mb-2" />
+              <h3 className="font-medium">View Today's Schedule</h3>
+              <p className="text-sm text-gray-600">Check today's appointments</p>
             </div>
           </div>
         </CardContent>
