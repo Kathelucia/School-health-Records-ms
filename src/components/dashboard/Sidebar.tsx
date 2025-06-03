@@ -1,154 +1,206 @@
 
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { 
-  Home, 
-  Users, 
-  Stethoscope, 
-  Pill, 
-  FileText, 
-  Heart,
-  ChevronLeft,
-  ChevronRight
+import { Badge } from '@/components/ui/badge';
+import {
+  Home,
+  Users,
+  Stethoscope,
+  Pill,
+  FileText,
+  Bell,
+  Settings,
+  LogOut,
+  Syringe,
+  Shield,
+  Menu,
+  X
 } from 'lucide-react';
 
 interface SidebarProps {
-  activeView: string;
-  setActiveView: (view: 'home' | 'students' | 'visits' | 'medication' | 'reports') => void;
-  userProfile: any;
-  collapsed: boolean;
-  setCollapsed: (collapsed: boolean) => void;
+  currentView: string;
+  onViewChange: (view: string) => void;
+  onLogout: () => void;
+  userRole: string;
+  unreadNotifications?: number;
 }
 
-const Sidebar = ({ activeView, setActiveView, userProfile, collapsed, setCollapsed }: SidebarProps) => {
+const Sidebar = ({ 
+  currentView, 
+  onViewChange, 
+  onLogout, 
+  userRole,
+  unreadNotifications = 0 
+}: SidebarProps) => {
+  const [collapsed, setCollapsed] = useState(false);
+
   const menuItems = [
-    { id: 'home', label: 'Dashboard', icon: Home },
-    { 
-      id: 'students', 
-      label: 'Student Profiles', 
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: Home,
+      description: 'System overview and statistics'
+    },
+    {
+      id: 'students',
+      label: 'Student Profiles',
       icon: Users,
-      medicalOnly: true 
+      description: 'Manage student health records'
     },
-    { 
-      id: 'visits', 
-      label: 'Clinic Visits', 
+    {
+      id: 'clinic',
+      label: 'Clinic Visits',
       icon: Stethoscope,
-      medicalOnly: true 
+      description: 'Log and track medical visits'
     },
-    { 
-      id: 'medication', 
-      label: 'Medication', 
+    {
+      id: 'immunizations',
+      label: 'Immunizations',
+      icon: Syringe,
+      description: 'Vaccination tracking and compliance'
+    },
+    {
+      id: 'medications',
+      label: 'Medication Inventory',
       icon: Pill,
-      medicalOnly: true 
+      description: 'Manage medication stock'
     },
-    { 
-      id: 'reports', 
-      label: 'Reports', 
-      icon: FileText, 
-      adminOnly: true 
+    {
+      id: 'reports',
+      label: 'Reports',
+      icon: FileText,
+      description: 'Health analytics and compliance reports'
     },
+    {
+      id: 'notifications',
+      label: 'Notifications',
+      icon: Bell,
+      description: 'System alerts and updates',
+      badge: unreadNotifications > 0 ? unreadNotifications : undefined
+    }
   ];
 
-  const isMedicalStaff = ['nurse', 'clinical_officer', 'admin'].includes(userProfile?.role);
-  const isAdmin = userProfile?.role === 'admin';
-
-  const visibleItems = menuItems.filter(item => {
-    if (item.medicalOnly && !isMedicalStaff) return false;
-    if (item.adminOnly && !isAdmin) return false;
-    return true;
-  });
-
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'nurse': return 'bg-green-100 text-green-800';
-      case 'clinical_officer': return 'bg-blue-100 text-blue-800';
-      case 'it_support': return 'bg-purple-100 text-purple-800';
-      case 'admin': return 'bg-red-100 text-red-800';
-      case 'other_staff': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getRoleDisplayName = (role: string) => {
-    switch (role) {
-      case 'nurse': return 'Nurse';
-      case 'clinical_officer': return 'Clinical Officer';
-      case 'it_support': return 'IT Support';
-      case 'admin': return 'Administrator';
-      case 'other_staff': return 'Staff';
-      default: return 'User';
-    }
-  };
+  // Admin-only items
+  if (userRole === 'admin') {
+    menuItems.push({
+      id: 'audit',
+      label: 'Audit Logs',
+      icon: Shield,
+      description: 'System activity tracking'
+    });
+  }
 
   return (
-    <div className={cn(
-      "bg-white border-r border-gray-200 flex flex-col transition-all duration-300",
-      collapsed ? "w-16" : "w-64"
-    )}>
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          {!collapsed && (
-            <div className="flex items-center space-x-2">
-              <Heart className="w-6 h-6 text-blue-600" />
-              <div>
-                <span className="font-bold text-gray-900 text-sm">SHRMS</span>
-                <div className="text-xs text-gray-500">🇰🇪 Kenya</div>
-              </div>
+    <>
+      {/* Mobile toggle button */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="md:hidden fixed top-4 left-4 z-50"
+        onClick={() => setCollapsed(!collapsed)}
+      >
+        {collapsed ? <Menu className="w-4 h-4" /> : <X className="w-4 h-4" />}
+      </Button>
+
+      {/* Sidebar */}
+      <div className={cn(
+        "bg-white border-r border-gray-200 h-full flex flex-col transition-all duration-300",
+        collapsed ? "w-16" : "w-64",
+        "md:relative fixed inset-y-0 left-0 z-40",
+        collapsed && "md:w-16"
+      )}>
+        {/* Header */}
+        <div className="p-4 border-b border-gray-200">
+          {!collapsed ? (
+            <div>
+              <h1 className="text-lg font-semibold text-gray-900">Health Records</h1>
+              <p className="text-sm text-gray-600">Management System</p>
+            </div>
+          ) : (
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Stethoscope className="w-5 h-5 text-white" />
             </div>
           )}
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1">
+          {menuItems.map((item) => {
+            const IconComponent = item.icon;
+            const isActive = currentView === item.id;
+            
+            return (
+              <Button
+                key={item.id}
+                variant={isActive ? "default" : "ghost"}
+                className={cn(
+                  "w-full justify-start h-auto p-3",
+                  collapsed && "px-3",
+                  isActive && "bg-blue-600 text-white hover:bg-blue-700"
+                )}
+                onClick={() => onViewChange(item.id)}
+                title={collapsed ? item.label : undefined}
+              >
+                <div className="flex items-center space-x-3 w-full">
+                  <IconComponent className="w-5 h-5 flex-shrink-0" />
+                  {!collapsed && (
+                    <div className="flex-1 text-left">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{item.label}</span>
+                        {item.badge && (
+                          <Badge className="bg-red-500 text-white text-xs">
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs opacity-75 mt-1">{item.description}</p>
+                    </div>
+                  )}
+                </div>
+              </Button>
+            );
+          })}
+        </nav>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200 space-y-2">
           <Button
             variant="ghost"
-            size="sm"
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-1 h-8 w-8"
-          >
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <ChevronLeft className="w-4 h-4" />
+            className={cn(
+              "w-full justify-start p-3",
+              collapsed && "px-3"
             )}
+            onClick={() => onViewChange('settings')}
+            title={collapsed ? "Settings" : undefined}
+          >
+            <Settings className="w-5 h-5 flex-shrink-0" />
+            {!collapsed && <span className="ml-3">Settings</span>}
+          </Button>
+          
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full justify-start p-3 text-red-600 hover:text-red-700 hover:bg-red-50",
+              collapsed && "px-3"
+            )}
+            onClick={onLogout}
+            title={collapsed ? "Logout" : undefined}
+          >
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            {!collapsed && <span className="ml-3">Logout</span>}
           </Button>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
-        {visibleItems.map((item) => (
-          <Button
-            key={item.id}
-            variant={activeView === item.id ? "default" : "ghost"}
-            className={cn(
-              "w-full justify-start",
-              collapsed && "px-2",
-              activeView === item.id && "bg-blue-600 text-white hover:bg-blue-700"
-            )}
-            onClick={() => setActiveView(item.id as any)}
-          >
-            <item.icon className={cn("w-4 h-4", !collapsed && "mr-2")} />
-            {!collapsed && item.label}
-          </Button>
-        ))}
-      </nav>
-
-      {/* User Role Badge */}
+      {/* Mobile overlay */}
       {!collapsed && (
-        <div className="p-4 border-t border-gray-200">
-          <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Role</div>
-          <div className={cn(
-            "px-2 py-1 rounded text-sm font-medium",
-            getRoleColor(userProfile?.role || 'other_staff')
-          )}>
-            {getRoleDisplayName(userProfile?.role || 'other_staff')}
-          </div>
-          {userProfile?.department && (
-            <div className="text-xs text-gray-500 mt-1">
-              {userProfile.department}
-            </div>
-          )}
-        </div>
+        <div 
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setCollapsed(true)}
+        />
       )}
-    </div>
+    </>
   );
 };
 

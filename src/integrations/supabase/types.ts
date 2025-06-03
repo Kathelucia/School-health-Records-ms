@@ -9,6 +9,53 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          record_id: string | null
+          table_name: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_visits: {
         Row: {
           attended_by: string | null
@@ -172,6 +219,53 @@ export type Database = {
         }
         Relationships: []
       }
+      immunizations: {
+        Row: {
+          administered_by: string | null
+          batch_number: string | null
+          created_at: string | null
+          date_administered: string
+          id: string
+          next_dose_date: string | null
+          notes: string | null
+          student_id: string | null
+          updated_at: string | null
+          vaccine_name: string
+        }
+        Insert: {
+          administered_by?: string | null
+          batch_number?: string | null
+          created_at?: string | null
+          date_administered: string
+          id?: string
+          next_dose_date?: string | null
+          notes?: string | null
+          student_id?: string | null
+          updated_at?: string | null
+          vaccine_name: string
+        }
+        Update: {
+          administered_by?: string | null
+          batch_number?: string | null
+          created_at?: string | null
+          date_administered?: string
+          id?: string
+          next_dose_date?: string | null
+          notes?: string | null
+          student_id?: string | null
+          updated_at?: string | null
+          vaccine_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "immunizations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medication_dispensing: {
         Row: {
           clinic_visit_id: string | null
@@ -274,6 +368,50 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          related_id: string | null
+          related_table: string | null
+          title: string
+          type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          related_id?: string | null
+          related_table?: string | null
+          title: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          related_id?: string | null
+          related_table?: string | null
+          title?: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -436,11 +574,42 @@ export type Database = {
         }
         Relationships: []
       }
+      vaccination_requirements: {
+        Row: {
+          created_at: string | null
+          doses_required: number | null
+          id: string
+          is_mandatory: boolean | null
+          required_for_form_level: string[] | null
+          vaccine_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          doses_required?: number | null
+          id?: string
+          is_mandatory?: boolean | null
+          required_for_form_level?: string[] | null
+          vaccine_name: string
+        }
+        Update: {
+          created_at?: string | null
+          doses_required?: number | null
+          id?: string
+          is_mandatory?: boolean | null
+          required_for_form_level?: string[] | null
+          vaccine_name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_medication_alerts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
