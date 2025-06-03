@@ -13,14 +13,17 @@ import Reports from '../reports/Reports';
 import NotificationCenter from '../notifications/NotificationCenter';
 import AuditLogs from '../audit/AuditLogs';
 
-const Dashboard = () => {
+interface DashboardProps {
+  userProfile: any;
+  onLogout: () => void;
+}
+
+const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
   const [currentView, setCurrentView] = useState('dashboard');
-  const [userProfile, setUserProfile] = useState<any>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchUserProfile();
     fetchNotificationCount();
     
     // Check for medication alerts periodically
@@ -29,27 +32,6 @@ const Dashboard = () => {
     
     return () => clearInterval(alertInterval);
   }, []);
-
-  const fetchUserProfile = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (error) throw error;
-        setUserProfile(profile);
-      }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      toast.error('Error loading user profile');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchNotificationCount = async () => {
     try {
@@ -73,17 +55,6 @@ const Dashboard = () => {
       fetchNotificationCount();
     } catch (error) {
       console.error('Error checking medication alerts:', error);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      window.location.reload();
-    } catch (error) {
-      console.error('Error logging out:', error);
-      toast.error('Error logging out');
     }
   };
 
@@ -132,7 +103,7 @@ const Dashboard = () => {
       <Sidebar
         currentView={currentView}
         onViewChange={setCurrentView}
-        onLogout={handleLogout}
+        onLogout={onLogout}
         userRole={userProfile?.role || ''}
         unreadNotifications={unreadNotifications}
       />

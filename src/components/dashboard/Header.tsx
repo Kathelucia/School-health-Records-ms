@@ -4,11 +4,10 @@ import { LogOut, Menu, Bell, User } from 'lucide-react';
 
 interface HeaderProps {
   userProfile: any;
-  onLogout: () => void;
-  onToggleSidebar: () => void;
+  currentView: string;
 }
 
-const Header = ({ userProfile, onLogout, onToggleSidebar }: HeaderProps) => {
+const Header = ({ userProfile, currentView }: HeaderProps) => {
   const getRoleDisplayName = (role: string) => {
     switch (role) {
       case 'nurse': return 'School Nurse';
@@ -31,20 +30,27 @@ const Header = ({ userProfile, onLogout, onToggleSidebar }: HeaderProps) => {
     }
   };
 
+  const getPageTitle = (view: string) => {
+    switch (view) {
+      case 'dashboard': return 'Dashboard Overview';
+      case 'students': return 'Student Health Profiles';
+      case 'clinic': return 'Clinic Visit Management';
+      case 'immunizations': return 'Immunization Records';
+      case 'medications': return 'Medication Inventory';
+      case 'reports': return 'Health Reports & Analytics';
+      case 'notifications': return 'System Notifications';
+      case 'audit': return 'Audit Trail';
+      case 'settings': return 'System Settings';
+      default: return 'Health Records Management';
+    }
+  };
+
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
       <div className="flex items-center space-x-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggleSidebar}
-          className="lg:hidden hover:bg-gray-100 transition-colors duration-200"
-        >
-          <Menu className="w-4 h-4" />
-        </Button>
         <div>
           <h1 className="text-xl font-semibold text-gray-900">
-            Health Records Management
+            {getPageTitle(currentView)}
           </h1>
           <div className="flex items-center space-x-2">
             <p className="text-sm text-gray-500">
@@ -88,16 +94,6 @@ const Header = ({ userProfile, onLogout, onToggleSidebar }: HeaderProps) => {
             <User className="w-4 h-4 text-white" />
           </div>
         </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onLogout}
-          className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-all duration-200"
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          Logout
-        </Button>
       </div>
     </header>
   );
