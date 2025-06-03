@@ -1,12 +1,15 @@
 
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { 
   User, 
+  Calendar, 
+  MapPin, 
   AlertTriangle, 
-  Phone, 
-  MapPin,
-  Calendar
+  Shield,
+  Eye,
+  Heart
 } from 'lucide-react';
 
 interface StudentCardProps {
@@ -15,102 +18,112 @@ interface StudentCardProps {
 }
 
 const StudentCard = ({ student, onClick }: StudentCardProps) => {
-  const getRiskLevel = (student: any) => {
-    if (student.chronic_conditions || student.allergies) {
-      return 'high';
-    }
-    return 'low';
+  const getFormLevelDisplay = (formLevel: string) => {
+    return formLevel?.replace('_', ' ').toUpperCase() || 'N/A';
   };
 
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case 'high': return 'bg-red-100 text-red-800 border-red-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  const getGenderColor = (gender: string) => {
+    switch (gender?.toLowerCase()) {
+      case 'male': return 'bg-blue-100 text-blue-800';
+      case 'female': return 'bg-pink-100 text-pink-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const calculateAge = (dateOfBirth: string) => {
-    if (!dateOfBirth) return 'Unknown';
-    const today = new Date();
-    const birthDate = new Date(dateOfBirth);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  const riskLevel = getRiskLevel(student);
-  const age = calculateAge(student.date_of_birth);
+  const hasHealthAlerts = student.chronic_conditions || student.allergies;
+  const age = student.date_of_birth 
+    ? new Date().getFullYear() - new Date(student.date_of_birth).getFullYear()
+    : null;
 
   return (
-    <Card 
-      className="hover:shadow-md transition-shadow cursor-pointer"
-      onClick={onClick}
-    >
-      <CardHeader>
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-            <User className="w-6 h-6 text-gray-400" />
+    <Card className="hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer group animate-fade-in">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-green-500 rounded-full flex items-center justify-center">
+              <User className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-lg group-hover:text-blue-600 transition-colors">
+                {student.full_name}
+              </CardTitle>
+              <CardDescription className="flex items-center space-x-2">
+                <span>ID: {student.student_id || 'N/A'}</span>
+                {student.admission_number && (
+                  <>
+                    <span>•</span>
+                    <span>Adm: {student.admission_number}</span>
+                  </>
+                )}
+              </CardDescription>
+            </div>
           </div>
-          <div className="flex-1">
-            <CardTitle className="text-lg">{student.full_name}</CardTitle>
-            <CardDescription>
-              {student.form_level?.replace('_', ' ').toUpperCase()} 
-              {student.stream && ` • Stream ${student.stream}`} 
-              • Age {age}
-            </CardDescription>
-          </div>
-          <Badge className={getRiskColor(riskLevel)}>
-            {riskLevel}
-          </Badge>
+          {hasHealthAlerts && (
+            <div className="flex items-center space-x-1">
+              <AlertTriangle className="w-4 h-4 text-red-500" />
+              <Heart className="w-4 h-4 text-red-500" />
+            </div>
+          )}
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {student.student_id && (
-            <div className="text-sm">
-              <span className="text-gray-600">ID:</span> {student.student_id}
-            </div>
-          )}
-          
-          {(student.allergies || student.chronic_conditions) && (
-            <div className="flex items-center">
-              <AlertTriangle className="w-4 h-4 mr-2 text-red-500" />
-              <span className="text-sm text-red-600">
-                Medical alerts on file
-              </span>
-            </div>
-          )}
-          
-          {student.parent_guardian_name && (
-            <div className="flex items-center">
-              <Phone className="w-4 h-4 mr-2 text-gray-400" />
-              <span className="text-sm text-gray-600 truncate">
-                {student.parent_guardian_name}
-              </span>
+      
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Badge className={getGenderColor(student.gender)}>
+              {student.gender || 'Unknown'}
+            </Badge>
+            <Badge variant="outline">
+              {getFormLevelDisplay(student.form_level)}
+            </Badge>
+            {student.stream && (
+              <Badge variant="secondary">
+                {student.stream}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2 text-sm text-gray-600">
+          {age && (
+            <div className="flex items-center space-x-2">
+              <Calendar className="w-4 h-4" />
+              <span>Age: {age} years</span>
             </div>
           )}
           
           {student.county && (
-            <div className="flex items-center">
-              <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-              <span className="text-sm text-gray-600 truncate">
-                {student.county}
-              </span>
+            <div className="flex items-center space-x-2">
+              <MapPin className="w-4 h-4" />
+              <span>{student.county}, {student.sub_county || 'Kenya'}</span>
             </div>
           )}
-          
-          <div className="flex items-center">
-            <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-            <span className="text-sm text-gray-600">
-              Admitted: {student.admission_date ? new Date(student.admission_date).toLocaleDateString() : 'N/A'}
-            </span>
-          </div>
+
+          {hasHealthAlerts && (
+            <div className="p-2 bg-red-50 rounded-lg border border-red-200">
+              <div className="flex items-center space-x-2 text-red-700">
+                <Shield className="w-4 h-4" />
+                <span className="font-medium">Medical Alerts</span>
+              </div>
+              <div className="mt-1 text-xs text-red-600">
+                {student.chronic_conditions && (
+                  <div>Chronic: {student.chronic_conditions}</div>
+                )}
+                {student.allergies && (
+                  <div>Allergies: {student.allergies}</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
+
+        <Button 
+          onClick={onClick}
+          className="w-full mt-4 group-hover:bg-blue-600 transition-colors"
+        >
+          <Eye className="w-4 h-4 mr-2" />
+          View Details
+        </Button>
       </CardContent>
     </Card>
   );

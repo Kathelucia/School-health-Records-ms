@@ -5,16 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
+  ArrowLeft, 
+  Edit, 
   User, 
-  AlertTriangle, 
+  Calendar, 
+  MapPin, 
   Phone, 
-  MapPin,
-  Calendar,
-  FileText,
+  Heart,
   Stethoscope,
-  Pill,
-  Edit,
-  ArrowLeft
+  Syringe,
+  AlertTriangle,
+  Shield,
+  FileText
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -27,14 +29,14 @@ interface StudentDetailsProps {
 
 const StudentDetails = ({ student, onBack, onEdit }: StudentDetailsProps) => {
   const [clinicVisits, setClinicVisits] = useState([]);
-  const [medications, setMedications] = useState([]);
+  const [immunizations, setImmunizations] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStudentData();
+    fetchStudentRecords();
   }, [student.id]);
 
-  const fetchStudentData = async () => {
+  const fetchStudentRecords = async () => {
     try {
       // Fetch clinic visits
       const { data: visits, error: visitsError } = await supabase
@@ -47,261 +49,373 @@ const StudentDetails = ({ student, onBack, onEdit }: StudentDetailsProps) => {
         .order('visit_date', { ascending: false });
 
       if (visitsError) throw visitsError;
+
+      // Fetch immunizations
+      const { data: immunizationData, error: immunizationsError } = await supabase
+        .from('immunizations')
+        .select('*')
+        .eq('student_id', student.id)
+        .order('date_administered', { ascending: false });
+
+      if (immunizationsError) throw immunizationsError;
+
       setClinicVisits(visits || []);
-
-      // Fetch medication dispensing records
-      const { data: medicationRecords, error: medError } = await supabase
-        .from('medication_dispensing')
-        .select(`
-          *,
-          medications(name, dosage),
-          clinic_visits(visit_date, diagnosis)
-        `)
-        .eq('clinic_visit_id', visits?.[0]?.id || '')
-        .order('dispensed_at', { ascending: false });
-
-      if (medError) console.error('Error fetching medications:', medError);
-      setMedications(medicationRecords || []);
-    } catch (error: any) {
-      console.error('Error fetching student data:', error);
-      toast.error('Error loading student details');
+      setImmunizations(immunizationData || []);
+    } catch (error) {
+      console.error('Error fetching student records:', error);
+      toast.error('Error loading student records');
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateAge = (dateOfBirth: string) => {
-    if (!dateOfBirth) return 'Unknown';
-    const today = new Date();
-    const birthDate = new Date(dateOfBirth);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
+  const getFormLevelDisplay = (formLevel: string) => {
+    return formLevel?.replace('_', ' ').toUpperCase() || 'N/A';
   };
 
-  const getRiskLevel = (student: any) => {
-    if (student.chronic_conditions || student.allergies) {
-      return 'high';
-    }
-    return 'low';
-  };
+  const age = student.date_of_birth 
+    ? new Date().getFullYear() - new Date(student.date_of_birth).getFullYear()
+    : null;
 
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case 'high': return 'bg-red-100 text-red-800 border-red-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const riskLevel = getRiskLevel(student);
+  const hasHealthAlerts = student.chronic_conditions || student.allergies;
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <Button variant="outline" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Students
-        </Button>
+    <div className="p-6 space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" onClick={onBack}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">{student.full_name}</h2>
+            <p className="text-gray-600">Student ID: {student.student_id}</p>
+          </div>
+        </div>
         <Button onClick={onEdit}>
           <Edit className="w-4 h-4 mr-2" />
           Edit Profile
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Student Profile Card */}
-        <Card className="lg:col-span-1">
-          <CardHeader className="text-center">
-            <div className="w-24 h-24 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-4">
-              <User className="w-12 h-12 text-gray-400" />
+      {hasHealthAlerts && (
+        <Card className="border-red-200 bg-red-50 animate-pulse">
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <CardTitle className="text-red-800">Medical Alerts</CardTitle>
             </div>
-            <CardTitle>{student.full_name}</CardTitle>
-            <CardDescription>
-              {student.form_level?.replace('_', ' ').toUpperCase()} {student.stream && `• Stream ${student.stream}`}
-            </CardDescription>
-            <CardDescription>
-              Age: {calculateAge(student.date_of_birth)} years
-            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Risk Level</span>
-              <Badge className={getRiskColor(riskLevel)}>
-                {riskLevel.toUpperCase()}
-              </Badge>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="text-sm">
-                <span className="font-medium">Student ID:</span> {student.student_id || 'N/A'}
-              </div>
-              <div className="text-sm">
-                <span className="font-medium">Admission No:</span> {student.admission_number || 'N/A'}
-              </div>
-              <div className="text-sm">
-                <span className="font-medium">Blood Group:</span> {student.blood_group || 'Unknown'}
-              </div>
-              
-              {student.parent_guardian_name && (
-                <div className="flex items-center text-sm">
-                  <Phone className="w-4 h-4 mr-2 text-gray-400" />
-                  <div>
-                    <div className="font-medium">{student.parent_guardian_name}</div>
-                    <div className="text-gray-600">{student.parent_guardian_phone}</div>
-                  </div>
+          <CardContent>
+            <div className="space-y-2">
+              {student.chronic_conditions && (
+                <div>
+                  <span className="font-medium text-red-700">Chronic Conditions: </span>
+                  <span className="text-red-600">{student.chronic_conditions}</span>
                 </div>
               )}
-              
-              {student.county && (
-                <div className="flex items-center text-sm">
-                  <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-                  <div className="text-gray-600">
-                    {[student.village, student.ward, student.sub_county, student.county]
-                      .filter(Boolean)
-                      .join(', ')}
-                  </div>
+              {student.allergies && (
+                <div>
+                  <span className="font-medium text-red-700">Allergies: </span>
+                  <span className="text-red-600">{student.allergies}</span>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
+      )}
 
-        {/* Detailed Information Tabs */}
-        <div className="lg:col-span-2">
-          <Tabs defaultValue="medical" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="medical">Medical Info</TabsTrigger>
-              <TabsTrigger value="visits">Clinic Visits</TabsTrigger>
-              <TabsTrigger value="medications">Medications</TabsTrigger>
-            </TabsList>
+      <Tabs defaultValue="profile" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="visits">Clinic Visits</TabsTrigger>
+          <TabsTrigger value="immunizations">Immunizations</TabsTrigger>
+          <TabsTrigger value="emergency">Emergency Info</TabsTrigger>
+        </TabsList>
 
-            <TabsContent value="medical" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <AlertTriangle className="w-5 h-5 mr-2 text-red-600" />
-                    Allergies & Medical Alerts
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {student.allergies ? (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded">
-                      <p className="text-red-800 font-medium">Known Allergies:</p>
-                      <p className="text-red-700">{student.allergies}</p>
+        <TabsContent value="profile" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <User className="w-5 h-5 mr-2 text-blue-600" />
+                  Personal Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Full Name</label>
+                    <p className="text-gray-900">{student.full_name}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Gender</label>
+                    <p className="text-gray-900">{student.gender || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Date of Birth</label>
+                    <p className="text-gray-900">
+                      {student.date_of_birth 
+                        ? new Date(student.date_of_birth).toLocaleDateString()
+                        : 'Not specified'
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Age</label>
+                    <p className="text-gray-900">{age ? `${age} years` : 'Unknown'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Blood Group</label>
+                    <p className="text-gray-900">{student.blood_group || 'Unknown'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Admission Date</label>
+                    <p className="text-gray-900">
+                      {student.admission_date 
+                        ? new Date(student.admission_date).toLocaleDateString()
+                        : 'Not specified'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-green-600" />
+                  Academic Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">{getFormLevelDisplay(student.form_level)}</Badge>
+                  {student.stream && <Badge variant="secondary">{student.stream}</Badge>}
+                  <Badge className={student.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                    {student.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Student ID</label>
+                    <p className="text-gray-900">{student.student_id}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Admission Number</label>
+                    <p className="text-gray-900">{student.admission_number || 'Not assigned'}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <MapPin className="w-5 h-5 mr-2 text-purple-600" />
+                  Address Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">County</label>
+                  <p className="text-gray-900">{student.county || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Sub-County</label>
+                  <p className="text-gray-900">{student.sub_county || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Ward</label>
+                  <p className="text-gray-900">{student.ward || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Village</label>
+                  <p className="text-gray-900">{student.village || 'Not specified'}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Heart className="w-5 h-5 mr-2 text-red-600" />
+                  Health Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Chronic Conditions</label>
+                  <p className="text-gray-900">{student.chronic_conditions || 'None reported'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Allergies</label>
+                  <p className="text-gray-900">{student.allergies || 'None reported'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Parent/Guardian</label>
+                  <p className="text-gray-900">{student.parent_guardian_name || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Guardian Phone</label>
+                  <p className="text-gray-900">{student.parent_guardian_phone || 'Not specified'}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="visits" className="space-y-4">
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            </div>
+          ) : clinicVisits.length > 0 ? (
+            <div className="space-y-4">
+              {clinicVisits.map((visit: any) => (
+                <Card key={visit.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center">
+                        <Stethoscope className="w-5 h-5 mr-2 text-green-600" />
+                        {new Date(visit.visit_date).toLocaleDateString()}
+                      </CardTitle>
+                      <Badge variant={visit.visit_type === 'emergency' ? 'destructive' : 'secondary'}>
+                        {visit.visit_type?.replace('_', ' ')}
+                      </Badge>
                     </div>
-                  ) : (
-                    <p className="text-gray-500">No known allergies</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Chronic Conditions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {student.chronic_conditions ? (
-                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
-                      <p className="text-yellow-800">{student.chronic_conditions}</p>
-                    </div>
-                  ) : (
-                    <p className="text-gray-500">No chronic conditions recorded</p>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="visits" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Stethoscope className="w-5 h-5 mr-2" />
-                    Recent Clinic Visits
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <p>Loading visits...</p>
-                  ) : clinicVisits.length > 0 ? (
-                    <div className="space-y-3">
-                      {clinicVisits.map((visit: any) => (
-                        <div key={visit.id} className="p-3 border rounded">
-                          <div className="flex justify-between items-start mb-2">
-                            <p className="font-medium">{visit.diagnosis || 'General Visit'}</p>
-                            <span className="text-sm text-gray-500">
-                              {new Date(visit.visit_date).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-2">
-                            <strong>Symptoms:</strong> {visit.symptoms || 'None recorded'}
-                          </p>
-                          <p className="text-sm text-gray-600 mb-2">
-                            <strong>Treatment:</strong> {visit.treatment_given || 'None recorded'}
-                          </p>
-                          {visit.notes && (
-                            <p className="text-sm text-gray-600">
-                              <strong>Notes:</strong> {visit.notes}
-                            </p>
-                          )}
-                          {visit.profiles && (
-                            <p className="text-xs text-gray-500 mt-2">
-                              Attended by: {visit.profiles.full_name}
-                            </p>
-                          )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {visit.symptoms && (
+                        <div>
+                          <span className="font-medium">Symptoms: </span>
+                          <span>{visit.symptoms}</span>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500">No clinic visits recorded</p>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="medications" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Pill className="w-5 h-5 mr-2" />
-                    Medication History
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <p>Loading medications...</p>
-                  ) : medications.length > 0 ? (
-                    <div className="space-y-3">
-                      {medications.map((med: any) => (
-                        <div key={med.id} className="p-3 bg-blue-50 border border-blue-200 rounded">
-                          <p className="font-medium">
-                            {med.medications?.name} ({med.medications?.dosage})
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Quantity: {med.quantity_dispensed}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Instructions: {med.dosage_instructions || 'Follow standard dosage'}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-2">
-                            Dispensed: {new Date(med.dispensed_at).toLocaleDateString()}
-                          </p>
+                      )}
+                      {visit.diagnosis && (
+                        <div>
+                          <span className="font-medium">Diagnosis: </span>
+                          <span>{visit.diagnosis}</span>
                         </div>
-                      ))}
+                      )}
+                      {visit.treatment_given && (
+                        <div>
+                          <span className="font-medium">Treatment: </span>
+                          <span>{visit.treatment_given}</span>
+                        </div>
+                      )}
+                      {visit.profiles && (
+                        <div className="text-sm text-gray-500">
+                          Attended by: {visit.profiles.full_name}
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <p className="text-gray-500">No medications dispensed</p>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Stethoscope className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+              <p>No clinic visits recorded</p>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="immunizations" className="space-y-4">
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            </div>
+          ) : immunizations.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {immunizations.map((immunization: any) => (
+                <Card key={immunization.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Syringe className="w-5 h-5 mr-2 text-blue-600" />
+                      {immunization.vaccine_name}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="font-medium">Date: </span>
+                        <span>{new Date(immunization.date_administered).toLocaleDateString()}</span>
+                      </div>
+                      {immunization.administered_by && (
+                        <div>
+                          <span className="font-medium">Administered by: </span>
+                          <span>{immunization.administered_by}</span>
+                        </div>
+                      )}
+                      {immunization.batch_number && (
+                        <div>
+                          <span className="font-medium">Batch: </span>
+                          <span>{immunization.batch_number}</span>
+                        </div>
+                      )}
+                      {immunization.next_dose_date && (
+                        <div>
+                          <span className="font-medium">Next dose: </span>
+                          <span>{new Date(immunization.next_dose_date).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Syringe className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+              <p>No immunization records found</p>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="emergency" className="space-y-4">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Shield className="w-5 h-5 mr-2 text-red-600" />
+                Emergency Contact Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Parent/Guardian Name</label>
+                  <p className="text-gray-900 text-lg">{student.parent_guardian_name || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Contact Phone</label>
+                  <p className="text-gray-900 text-lg">{student.parent_guardian_phone || 'Not specified'}</p>
+                </div>
+                {student.emergency_contact && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Additional Emergency Contact</label>
+                    <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                      <pre className="text-sm">{JSON.stringify(student.emergency_contact, null, 2)}</pre>
+                    </div>
+                  </div>
+                )}
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center space-x-2 text-yellow-800">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="font-medium">Important</span>
+                  </div>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Always contact emergency contacts immediately for serious medical situations or injuries.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

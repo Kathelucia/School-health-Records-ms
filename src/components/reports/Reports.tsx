@@ -1,210 +1,434 @@
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { 
-  FileText, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line
+} from 'recharts';
+import { 
   Download, 
-  Calendar, 
-  TrendingUp,
-  Users,
-  Activity,
+  FileText, 
+  TrendingUp, 
+  Users, 
+  Stethoscope,
   AlertTriangle,
-  BarChart3
+  Calendar,
+  Activity
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ReportsProps {
-  userRole: 'nurse' | 'admin';
+  userRole: string;
 }
 
 const Reports = ({ userRole }: ReportsProps) => {
-  const reportCategories = [
-    {
-      title: "Health Trends",
-      description: "Analyze health patterns and trends across student population",
-      icon: TrendingUp,
-      reports: [
-        { name: "Monthly Health Summary", lastGenerated: "2024-01-15", format: "PDF" },
-        { name: "Seasonal Illness Trends", lastGenerated: "2024-01-10", format: "CSV" },
-        { name: "Emergency Response Statistics", lastGenerated: "2024-01-08", format: "PDF" }
-      ]
+  const [loading, setLoading] = useState(true);
+  const [reportData, setReportData] = useState({
+    studentStats: {
+      total: 0,
+      byGender: [],
+      byFormLevel: [],
+      withMedicalConditions: 0
     },
-    {
-      title: "Student Health Records",
-      description: "Individual and group health record reports",
-      icon: Users,
-      reports: [
-        { name: "Vaccination Compliance Report", lastGenerated: "2024-01-12", format: "PDF" },
-        { name: "Students with Chronic Conditions", lastGenerated: "2024-01-14", format: "CSV" },
-        { name: "Allergy Alert Summary", lastGenerated: "2024-01-16", format: "PDF" }
-      ]
+    clinicStats: {
+      totalVisits: 0,
+      monthlyVisits: [],
+      visitTypes: [],
+      frequentVisitors: []
     },
-    {
-      title: "Clinic Operations",
-      description: "Clinic visit statistics and operational metrics",
-      icon: Activity,
-      reports: [
-        { name: "Daily Clinic Visit Log", lastGenerated: "2024-01-18", format: "PDF" },
-        { name: "Medication Usage Report", lastGenerated: "2024-01-15", format: "CSV" },
-        { name: "Peak Hours Analysis", lastGenerated: "2024-01-10", format: "PDF" }
-      ]
+    healthTrends: {
+      commonConditions: [],
+      vaccinationCompliance: [],
+      medicationUsage: []
     },
-    {
-      title: "Compliance & Safety",
-      description: "Regulatory compliance and safety monitoring reports",
-      icon: AlertTriangle,
-      adminOnly: true,
-      reports: [
-        { name: "Health & Safety Compliance", lastGenerated: "2024-01-01", format: "PDF" },
-        { name: "Incident Reports Summary", lastGenerated: "2024-01-05", format: "CSV" },
-        { name: "Staff Training Records", lastGenerated: "2024-01-03", format: "PDF" }
-      ]
+    riskAssessment: {
+      highRiskStudents: [],
+      emergencyContacts: 0,
+      chronicConditions: []
     }
-  ];
+  });
 
-  const quickStats = [
-    { label: "Reports Generated This Month", value: "24", trend: "+15%" },
-    { label: "Most Common Visit Reason", value: "Headache", percentage: "32%" },
-    { label: "Vaccination Compliance", value: "94%", trend: "+2%" },
-    { label: "Emergency Incidents", value: "2", trend: "-50%" }
-  ];
+  useEffect(() => {
+    fetchReportData();
+  }, []);
 
-  const visibleCategories = reportCategories.filter(category => 
-    !category.adminOnly || userRole === 'admin'
-  );
+  const fetchReportData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch student statistics
+      const { data: students, error: studentsError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('is_active', true);
+
+      if (studentsError) throw studentsError;
+
+      // Fetch clinic visits
+      const { data: visits, error: visitsError } = await supabase
+        .from('clinic_visits')
+        .select('*')
+        .order('visit_date', { ascending: false });
+
+      if (visitsError) throw visitsError;
+
+      // Fetch immunizations
+      const { data: immunizations, error: immunizationsError } = await supabase
+        .from('immunizations')
+        .select('*');
+
+      if (immunizationsError) throw immunizationsError;
+
+      // Process data for reports
+      processReportData(students || [], visits || [], immunizations || []);
+      
+    } catch (error) {
+      console.error('Error fetching report data:', error);
+      toast.error('Error loading report data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processReportData = (students: any[], visits: any[], immunizations: any[]) => {
+    // Student statistics
+    const genderStats = students.reduce((acc, student) => {
+      const gender = student.gender || 'Unknown';
+      acc[gender] = (acc[gender] || 0) + 1;
+      return acc;
+    }, {});
+
+    const formLevelStats = students.reduce((acc, student) => {
+      const form = student.form_level || 'Unknown';
+      acc[form] = (acc[form] || 0) + 1;
+      return acc;
+    }, {});
+
+    const studentsWithConditions = students.filter(s => 
+      s.chronic_conditions || s.allergies
+    ).length;
+
+    // Clinic visit statistics
+    const monthlyVisits = visits.reduce((acc, visit) => {
+      const month = new Date(visit.visit_date).toLocaleDateString('en-US', { 
+        month: 'short', 
+        year: 'numeric' 
+      });
+      acc[month] = (acc[month] || 0) + 1;
+      return acc;
+    }, {});
+
+    const visitTypes = visits.reduce((acc, visit) => {
+      const type = visit.visit_type || 'routine';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Common conditions
+    const conditions = visits.reduce((acc, visit) => {
+      if (visit.diagnosis) {
+        acc[visit.diagnosis] = (acc[visit.diagnosis] || 0) + 1;
+      }
+      return acc;
+    }, {});
+
+    // Vaccination compliance
+    const vaccineStats = immunizations.reduce((acc, imm) => {
+      acc[imm.vaccine_name] = (acc[imm.vaccine_name] || 0) + 1;
+      return acc;
+    }, {});
+
+    setReportData({
+      studentStats: {
+        total: students.length,
+        byGender: Object.entries(genderStats).map(([name, value]) => ({ name, value })),
+        byFormLevel: Object.entries(formLevelStats).map(([name, value]) => ({ name, value })),
+        withMedicalConditions: studentsWithConditions
+      },
+      clinicStats: {
+        totalVisits: visits.length,
+        monthlyVisits: Object.entries(monthlyVisits).map(([name, value]) => ({ name, value })),
+        visitTypes: Object.entries(visitTypes).map(([name, value]) => ({ name, value })),
+        frequentVisitors: []
+      },
+      healthTrends: {
+        commonConditions: Object.entries(conditions)
+          .sort(([,a], [,b]) => (b as number) - (a as number))
+          .slice(0, 10)
+          .map(([name, value]) => ({ name, value })),
+        vaccinationCompliance: Object.entries(vaccineStats).map(([name, value]) => ({ name, value })),
+        medicationUsage: []
+      },
+      riskAssessment: {
+        highRiskStudents: students.filter(s => s.chronic_conditions || s.allergies),
+        emergencyContacts: students.filter(s => s.emergency_contact).length,
+        chronicConditions: []
+      }
+    });
+  };
+
+  const generatePDFReport = () => {
+    toast.success('PDF report generation will be implemented soon');
+  };
+
+  const exportToCSV = () => {
+    toast.success('CSV export will be implemented soon');
+  };
+
+  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Health Reports & Analytics</h2>
-        <p className="text-gray-600">Generate and analyze health data reports</p>
+    <div className="p-6 space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Health Reports & Analytics</h2>
+          <p className="text-gray-600">Comprehensive health data analysis and reporting</p>
+        </div>
+        <div className="flex space-x-2">
+          <Button onClick={generatePDFReport} variant="outline">
+            <FileText className="w-4 h-4 mr-2" />
+            Export PDF
+          </Button>
+          <Button onClick={exportToCSV} variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        {quickStats.map((stat, index) => (
-          <Card key={index}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                {stat.label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold">{stat.value}</div>
-                {stat.trend && (
-                  <Badge variant={stat.trend.startsWith('+') ? 'default' : 'secondary'}>
-                    {stat.trend}
-                  </Badge>
-                )}
-                {stat.percentage && (
-                  <Badge variant="outline">{stat.percentage}</Badge>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="students">Student Health</TabsTrigger>
+          <TabsTrigger value="clinic">Clinic Analytics</TabsTrigger>
+          <TabsTrigger value="compliance">Compliance</TabsTrigger>
+        </TabsList>
 
-      {/* Report Categories */}
-      <div className="space-y-8">
-        {visibleCategories.map((category, categoryIndex) => (
-          <Card key={categoryIndex}>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <category.icon className="w-5 h-5 mr-2 text-blue-600" />
-                {category.title}
-                {category.adminOnly && (
-                  <Badge variant="secondary" className="ml-2">Admin Only</Badge>
-                )}
-              </CardTitle>
-              <CardDescription>{category.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {category.reports.map((report, reportIndex) => (
-                  <div key={reportIndex} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-start space-x-3">
-                        <FileText className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-gray-900">{report.name}</h4>
-                          <p className="text-sm text-gray-500">
-                            Last generated: {new Date(report.lastGenerated).toLocaleDateString()}
-                          </p>
-                        </div>
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                <Users className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reportData.studentStats.total}</div>
+                <p className="text-xs text-muted-foreground">Active registrations</p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Clinic Visits</CardTitle>
+                <Stethoscope className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reportData.clinicStats.totalVisits}</div>
+                <p className="text-xs text-muted-foreground">Total recorded visits</p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">High Risk</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reportData.riskAssessment.highRiskStudents.length}</div>
+                <p className="text-xs text-muted-foreground">Students with conditions</p>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Emergency Contacts</CardTitle>
+                <Activity className="h-4 w-4 text-purple-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reportData.riskAssessment.emergencyContacts}</div>
+                <p className="text-xs text-muted-foreground">Students with contacts</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Student Distribution by Gender</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={reportData.studentStats.byGender}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {reportData.studentStats.byGender.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Clinic Visits</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={reportData.clinicStats.monthlyVisits}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="students" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Students by Form Level</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={reportData.studentStats.byFormLevel}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#10B981" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>High-Risk Students</CardTitle>
+                <CardDescription>Students with chronic conditions or allergies</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {reportData.riskAssessment.highRiskStudents.slice(0, 5).map((student: any) => (
+                    <div key={student.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                      <div>
+                        <p className="font-medium">{student.full_name}</p>
+                        <p className="text-sm text-gray-600">ID: {student.student_id}</p>
                       </div>
-                      <Badge variant="outline">{report.format}</Badge>
+                      <Badge variant="destructive">High Risk</Badge>
                     </div>
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <BarChart3 className="w-4 h-4 mr-1" />
-                        Generate
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="clinic" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Visit Types Distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={reportData.clinicStats.visitTypes}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {reportData.clinicStats.visitTypes.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Common Health Conditions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={reportData.healthTrends.commonConditions}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#F59E0B" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="compliance" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Vaccination Compliance</CardTitle>
+              <CardDescription>Immunization records by vaccine type</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={reportData.healthTrends.vaccinationCompliance}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#8B5CF6" />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
-        ))}
-      </div>
-
-      {/* Custom Report Builder */}
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <BarChart3 className="w-5 h-5 mr-2 text-green-600" />
-            Custom Report Builder
-          </CardTitle>
-          <CardDescription>
-            Create custom reports with specific date ranges and criteria
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
-              <select className="w-full p-2 border rounded">
-                <option>Clinic Visits</option>
-                <option>Medication Usage</option>
-                <option>Health Alerts</option>
-                <option>Student Profiles</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-              <select className="w-full p-2 border rounded">
-                <option>Last 7 days</option>
-                <option>Last 30 days</option>
-                <option>Last 3 months</option>
-                <option>Custom range</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Format</label>
-              <select className="w-full p-2 border rounded">
-                <option>PDF Report</option>
-                <option>Excel Spreadsheet</option>
-                <option>CSV Data</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex justify-end space-x-4">
-            <Button variant="outline">
-              <Calendar className="w-4 h-4 mr-2" />
-              Schedule Report
-            </Button>
-            <Button>
-              <FileText className="w-4 h-4 mr-2" />
-              Generate Report
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
