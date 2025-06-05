@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,11 +28,13 @@ const StudentProfiles = ({ userRole }: StudentProfilesProps) => {
 
   const fetchStudents = async () => {
     try {
+      // Optimize query - only fetch essential fields for listing
       const { data, error } = await supabase
         .from('students')
-        .select('*')
+        .select('id,full_name,student_id,admission_number,form_level,stream,gender,date_of_birth,county,sub_county,chronic_conditions,allergies')
         .eq('is_active', true)
-        .order('full_name');
+        .order('full_name')
+        .limit(100); // Add pagination limit
 
       if (error) throw error;
       setStudents(data || []);
@@ -44,12 +46,18 @@ const StudentProfiles = ({ userRole }: StudentProfilesProps) => {
     }
   };
 
-  const filteredStudents = students.filter((student: any) =>
-    student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.student_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.admission_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.form_level?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Memoize filtered students to prevent unnecessary recalculations
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm) return students;
+    
+    const term = searchTerm.toLowerCase();
+    return students.filter((student: any) =>
+      student.full_name?.toLowerCase().includes(term) ||
+      student.student_id?.toLowerCase().includes(term) ||
+      student.admission_number?.toLowerCase().includes(term) ||
+      student.form_level?.toLowerCase().includes(term)
+    );
+  }, [students, searchTerm]);
 
   const handleAddStudent = () => {
     setEditingStudent(null);
@@ -73,7 +81,6 @@ const StudentProfiles = ({ userRole }: StudentProfilesProps) => {
     setEditingStudent(null);
   };
 
-  // Check if user has permission to add/edit students
   const canManageStudents = ['nurse', 'clinical_officer', 'admin'].includes(userRole);
 
   if (selectedStudent) {
@@ -106,10 +113,11 @@ const StudentProfiles = ({ userRole }: StudentProfilesProps) => {
         onSearchChange={setSearchTerm}
       />
 
-      {/* Students Grid */}
       {loading ? (
-        <div className="flex justify-center items-center h-32">
-          <div className="text-gray-500">Loading students...</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className="h-64 bg-gray-200 rounded-lg animate-pulse"></div>
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -127,7 +135,6 @@ const StudentProfiles = ({ userRole }: StudentProfilesProps) => {
         <StudentEmptyState searchTerm={searchTerm} />
       )}
 
-      {/* Student Form Modal */}
       {showForm && (
         <StudentForm
           student={editingStudent}

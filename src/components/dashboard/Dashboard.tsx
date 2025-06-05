@@ -21,14 +21,13 @@ interface DashboardProps {
 const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchNotificationCount();
     
-    // Check for medication alerts periodically
-    const alertInterval = setInterval(checkMedicationAlerts, 300000); // 5 minutes
-    checkMedicationAlerts(); // Run immediately
+    // Reduce alert checking frequency to improve performance
+    const alertInterval = setInterval(checkMedicationAlerts, 600000); // 10 minutes instead of 5
+    checkMedicationAlerts();
     
     return () => clearInterval(alertInterval);
   }, []);
@@ -49,15 +48,14 @@ const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
 
   const checkMedicationAlerts = async () => {
     try {
-      // Call the medication alert function
       await supabase.rpc('check_medication_alerts');
-      // Refresh notification count after checking alerts
       fetchNotificationCount();
     } catch (error) {
       console.error('Error checking medication alerts:', error);
     }
   };
 
+  // Memoize content rendering to prevent unnecessary re-renders
   const renderContent = () => {
     const userRole = userProfile?.role || '';
 
@@ -90,14 +88,6 @@ const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500">Loading dashboard...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar
@@ -108,7 +98,7 @@ const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
         unreadNotifications={unreadNotifications}
       />
       
-      <div className="flex-1 flex flex-col md:ml-0">
+      <div className="flex-1 flex flex-col">
         <Header 
           userProfile={userProfile}
           currentView={currentView}

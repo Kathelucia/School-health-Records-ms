@@ -46,15 +46,7 @@ export type Database = {
           user_agent?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "audit_logs_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       clinic_visits: {
         Row: {
@@ -137,61 +129,6 @@ export type Database = {
           },
         ]
       }
-      fee_payments: {
-        Row: {
-          amount_paid: number | null
-          clinic_visit_id: string | null
-          id: string
-          payment_date: string | null
-          payment_method: string | null
-          receipt_number: string | null
-          service_id: string | null
-          staff_id: string | null
-        }
-        Insert: {
-          amount_paid?: number | null
-          clinic_visit_id?: string | null
-          id?: string
-          payment_date?: string | null
-          payment_method?: string | null
-          receipt_number?: string | null
-          service_id?: string | null
-          staff_id?: string | null
-        }
-        Update: {
-          amount_paid?: number | null
-          clinic_visit_id?: string | null
-          id?: string
-          payment_date?: string | null
-          payment_method?: string | null
-          receipt_number?: string | null
-          service_id?: string | null
-          staff_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fee_payments_clinic_visit_id_fkey"
-            columns: ["clinic_visit_id"]
-            isOneToOne: false
-            referencedRelation: "clinic_visits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fee_payments_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "health_service_fees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fee_payments_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       health_service_fees: {
         Row: {
           created_at: string | null
@@ -256,67 +193,7 @@ export type Database = {
           updated_at?: string | null
           vaccine_name?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "immunizations_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      medication_dispensing: {
-        Row: {
-          clinic_visit_id: string | null
-          dispensed_at: string | null
-          dispensed_by: string | null
-          dosage_instructions: string | null
-          id: string
-          medication_id: string | null
-          quantity_dispensed: number | null
-        }
-        Insert: {
-          clinic_visit_id?: string | null
-          dispensed_at?: string | null
-          dispensed_by?: string | null
-          dosage_instructions?: string | null
-          id?: string
-          medication_id?: string | null
-          quantity_dispensed?: number | null
-        }
-        Update: {
-          clinic_visit_id?: string | null
-          dispensed_at?: string | null
-          dispensed_by?: string | null
-          dosage_instructions?: string | null
-          id?: string
-          medication_id?: string | null
-          quantity_dispensed?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "medication_dispensing_clinic_visit_id_fkey"
-            columns: ["clinic_visit_id"]
-            isOneToOne: false
-            referencedRelation: "clinic_visits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "medication_dispensing_dispensed_by_fkey"
-            columns: ["dispensed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "medication_dispensing_medication_id_fkey"
-            columns: ["medication_id"]
-            isOneToOne: false
-            referencedRelation: "medications"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       medications: {
         Row: {
@@ -403,15 +280,7 @@ export type Database = {
           type?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -451,53 +320,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      }
-      student_progression: {
-        Row: {
-          academic_year: string
-          created_at: string | null
-          form_level: Database["public"]["Enums"]["education_level"]
-          id: string
-          notes: string | null
-          promoted: boolean | null
-          promotion_date: string | null
-          stream: string | null
-          student_id: string | null
-          term: Database["public"]["Enums"]["school_term"]
-        }
-        Insert: {
-          academic_year: string
-          created_at?: string | null
-          form_level: Database["public"]["Enums"]["education_level"]
-          id?: string
-          notes?: string | null
-          promoted?: boolean | null
-          promotion_date?: string | null
-          stream?: string | null
-          student_id?: string | null
-          term: Database["public"]["Enums"]["school_term"]
-        }
-        Update: {
-          academic_year?: string
-          created_at?: string | null
-          form_level?: Database["public"]["Enums"]["education_level"]
-          id?: string
-          notes?: string | null
-          promoted?: boolean | null
-          promotion_date?: string | null
-          stream?: string | null
-          student_id?: string | null
-          term?: Database["public"]["Enums"]["school_term"]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "student_progression_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       students: {
         Row: {
