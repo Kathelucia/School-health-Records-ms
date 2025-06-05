@@ -21,7 +21,7 @@ const Index = () => {
       setSession(initialSession);
       
       if (initialSession?.user) {
-        await setupUserProfile(initialSession.user.id);
+        await setupUserProfile(initialSession.user);
       }
       setLoading(false);
     };
@@ -34,7 +34,7 @@ const Index = () => {
       setSession(session);
       
       if (session?.user) {
-        await setupUserProfile(session.user.id);
+        await setupUserProfile(session.user);
       } else {
         setUserProfile(null);
       }
@@ -44,14 +44,15 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const setupUserProfile = async (userId: string) => {
+  const setupUserProfile = async (user: any) => {
     try {
-      console.log('Setting up profile for user:', userId);
+      console.log('Setting up profile for user:', user.id);
       
+      // First try to fetch existing profile
       const { data: profile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', user.id)
         .maybeSingle();
 
       console.log('Profile fetch result:', { profile, fetchError });
@@ -65,20 +66,35 @@ const Index = () => {
         console.log('Profile found:', profile);
         setUserProfile(profile);
       } else {
-        console.log('No profile found, should be created by trigger');
-        // The profile should be created by the database trigger
-        // Let's try fetching again after a short delay
-        setTimeout(async () => {
+        console.log('No profile found, creating one...');
+        // Create profile manually if trigger didn't work
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || user.email,
+            role: user.user_metadata?.role || 'other_staff'
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Error creating profile:', createError);
+          // If creation failed, try fetching again (might have been created by trigger)
           const { data: retryProfile } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', userId)
+            .eq('id', user.id)
             .maybeSingle();
           
           if (retryProfile) {
             setUserProfile(retryProfile);
           }
-        }, 1000);
+        } else {
+          console.log('Profile created:', newProfile);
+          setUserProfile(newProfile);
+        }
       }
     } catch (error) {
       console.error('Error in setupUserProfile:', error);
@@ -113,6 +129,7 @@ const Index = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Setting up your profile...</p>
+          <p className="text-sm text-gray-500 mt-2">This should only take a moment</p>
         </div>
       </div>
     );

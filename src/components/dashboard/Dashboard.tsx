@@ -12,6 +12,7 @@ import MedicationInventory from '../medication/MedicationInventory';
 import Reports from '../reports/Reports';
 import NotificationCenter from '../notifications/NotificationCenter';
 import AuditLogs from '../audit/AuditLogs';
+import Settings from '../settings/Settings';
 
 interface DashboardProps {
   userProfile: any;
@@ -21,6 +22,11 @@ interface DashboardProps {
 const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [currentUserProfile, setCurrentUserProfile] = useState(userProfile);
+
+  useEffect(() => {
+    setCurrentUserProfile(userProfile);
+  }, [userProfile]);
 
   useEffect(() => {
     fetchNotificationCount();
@@ -55,9 +61,13 @@ const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
     }
   };
 
+  const handleProfileUpdate = (updatedProfile: any) => {
+    setCurrentUserProfile(updatedProfile);
+  };
+
   // Memoize content rendering to prevent unnecessary re-renders
   const renderContent = () => {
-    const userRole = userProfile?.role || '';
+    const userRole = currentUserProfile?.role || '';
 
     switch (currentView) {
       case 'dashboard':
@@ -78,10 +88,10 @@ const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
         return <AuditLogs userRole={userRole} />;
       case 'settings':
         return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Settings</h2>
-            <p className="text-gray-600">Settings panel coming soon...</p>
-          </div>
+          <Settings 
+            userProfile={currentUserProfile} 
+            onProfileUpdate={handleProfileUpdate}
+          />
         );
       default:
         return <DashboardHome userRole={userRole} />;
@@ -94,13 +104,13 @@ const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
         currentView={currentView}
         onViewChange={setCurrentView}
         onLogout={onLogout}
-        userRole={userProfile?.role || ''}
+        userRole={currentUserProfile?.role || ''}
         unreadNotifications={unreadNotifications}
       />
       
       <div className="flex-1 flex flex-col">
         <Header 
-          userProfile={userProfile}
+          userProfile={currentUserProfile}
           currentView={currentView}
         />
         
