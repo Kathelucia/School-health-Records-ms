@@ -50,34 +50,17 @@ const Index = () => {
       console.log('Setting up profile for user:', user.id);
       setLoading(true);
       
-      // First try to fetch existing profile with retry logic
-      let profile = null;
-      let attempts = 0;
-      const maxAttempts = 3;
-      
-      while (!profile && attempts < maxAttempts) {
-        console.log(`Profile fetch attempt ${attempts + 1}`);
-        
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .maybeSingle();
+      // Simple profile fetch with quick fallback
+      console.log('Fetching profile...');
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-        if (error) {
-          console.error('Error fetching profile:', error);
-          if (error.code !== 'PGRST116') {
-            break;
-          }
-        } else if (data) {
-          profile = data;
-          break;
-        }
-        
-        attempts++;
-        if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+      if (error && error.code !== 'PGRST116') {
+        console.error('Profile fetch error:', error);
+        throw error;
       }
 
       if (profile) {
@@ -86,7 +69,7 @@ const Index = () => {
       } else {
         console.log('No profile found, creating one...');
         
-        // Create profile with better error handling
+        // Create basic profile
         const profileData = {
           id: user.id,
           email: user.email,
@@ -101,38 +84,17 @@ const Index = () => {
           .single();
 
         if (createError) {
-          console.error('Error creating profile:', createError);
-          
-          // If creation failed, try one more fetch (might have been created by trigger)
-          const { data: retryProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .maybeSingle();
-          
-          if (retryProfile) {
-            console.log('Profile found on retry:', retryProfile);
-            setUserProfile(retryProfile);
-          } else {
-            // Create a temporary profile object for the session
-            console.log('Using temporary profile');
-            setUserProfile({
-              id: user.id,
-              email: user.email,
-              full_name: user.email?.split('@')[0] || 'User',
-              role: 'other_staff',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
-          }
+          console.error('Profile creation error:', createError);
+          // Use fallback profile if creation fails
+          setUserProfile(profileData);
         } else {
-          console.log('Profile created successfully:', newProfile);
+          console.log('Profile created:', newProfile);
           setUserProfile(newProfile);
         }
       }
     } catch (error) {
       console.error('Error in setupUserProfile:', error);
-      // Create emergency fallback profile
+      // Create emergency fallback profile to prevent blocking
       setUserProfile({
         id: user.id,
         email: user.email,
@@ -169,21 +131,7 @@ const Index = () => {
   }
 
   if (!userProfile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Setting up your profile...</p>
-          <p className="text-sm text-gray-500 mt-2">This should only take a moment</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Refresh Page
-          </button>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="Setting up your profile..." />;
   }
 
   return (

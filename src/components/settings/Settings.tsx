@@ -23,10 +23,9 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
     role: ''
   });
   const [loading, setLoading] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
-    if (userProfile && initialLoad) {
+    if (userProfile) {
       console.log('Loading profile data:', userProfile);
       setFormData({
         full_name: userProfile.full_name || '',
@@ -36,9 +35,8 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
         department: userProfile.department || '',
         role: userProfile.role || 'other_staff'
       });
-      setInitialLoad(false);
     }
-  }, [userProfile, initialLoad]);
+  }, [userProfile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,12 +50,6 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
 
     try {
       console.log('Updating profile for user:', userProfile.id);
-      console.log('Update data:', {
-        full_name: formData.full_name,
-        phone_number: formData.phone_number,
-        employee_id: formData.employee_id,
-        department: formData.department
-      });
 
       const { data, error } = await supabase
         .from('profiles')
@@ -127,7 +119,6 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile Settings */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
@@ -218,7 +209,6 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
           </Card>
         </div>
 
-        {/* Account Summary */}
         <div>
           <Card>
             <CardHeader>
