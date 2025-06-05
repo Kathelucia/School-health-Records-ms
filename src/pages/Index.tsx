@@ -22,8 +22,9 @@ const Index = () => {
       
       if (initialSession?.user) {
         await setupUserProfile(initialSession.user);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     getInitialSession();
@@ -37,8 +38,8 @@ const Index = () => {
         await setupUserProfile(session.user);
       } else {
         setUserProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -47,19 +48,36 @@ const Index = () => {
   const setupUserProfile = async (user: any) => {
     try {
       console.log('Setting up profile for user:', user.id);
+      setLoading(true);
       
-      // First try to fetch existing profile
-      const { data: profile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+      // First try to fetch existing profile with retry logic
+      let profile = null;
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (!profile && attempts < maxAttempts) {
+        console.log(`Profile fetch attempt ${attempts + 1}`);
+        
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
 
-      console.log('Profile fetch result:', { profile, fetchError });
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', fetchError);
-        return;
+        if (error) {
+          console.error('Error fetching profile:', error);
+          if (error.code !== 'PGRST116') {
+            break;
+          }
+        } else if (data) {
+          profile = data;
+          break;
+        }
+        
+        attempts++;
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
 
       if (profile) {
@@ -67,21 +85,25 @@ const Index = () => {
         setUserProfile(profile);
       } else {
         console.log('No profile found, creating one...');
-        // Create profile manually if trigger didn't work
+        
+        // Create profile with better error handling
+        const profileData = {
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          role: user.user_metadata?.role || 'other_staff'
+        };
+        
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
-          .insert({
-            id: user.id,
-            email: user.email,
-            full_name: user.user_metadata?.full_name || user.email,
-            role: user.user_metadata?.role || 'other_staff'
-          })
+          .insert(profileData)
           .select()
           .single();
 
         if (createError) {
           console.error('Error creating profile:', createError);
-          // If creation failed, try fetching again (might have been created by trigger)
+          
+          // If creation failed, try one more fetch (might have been created by trigger)
           const { data: retryProfile } = await supabase
             .from('profiles')
             .select('*')
@@ -89,15 +111,38 @@ const Index = () => {
             .maybeSingle();
           
           if (retryProfile) {
+            console.log('Profile found on retry:', retryProfile);
             setUserProfile(retryProfile);
+          } else {
+            // Create a temporary profile object for the session
+            console.log('Using temporary profile');
+            setUserProfile({
+              id: user.id,
+              email: user.email,
+              full_name: user.email?.split('@')[0] || 'User',
+              role: 'other_staff',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
           }
         } else {
-          console.log('Profile created:', newProfile);
+          console.log('Profile created successfully:', newProfile);
           setUserProfile(newProfile);
         }
       }
     } catch (error) {
       console.error('Error in setupUserProfile:', error);
+      // Create emergency fallback profile
+      setUserProfile({
+        id: user.id,
+        email: user.email,
+        full_name: user.email?.split('@')[0] || 'User',
+        role: 'other_staff',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -130,6 +175,12 @@ const Index = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Setting up your profile...</p>
           <p className="text-sm text-gray-500 mt-2">This should only take a moment</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Refresh Page
+          </button>
         </div>
       </div>
     );

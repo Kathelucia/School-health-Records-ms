@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { User, Settings as SettingsIcon, Shield, Bell } from 'lucide-react';
@@ -24,44 +23,66 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
     role: ''
   });
   const [loading, setLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
-    if (userProfile) {
+    if (userProfile && initialLoad) {
+      console.log('Loading profile data:', userProfile);
       setFormData({
         full_name: userProfile.full_name || '',
         email: userProfile.email || '',
         phone_number: userProfile.phone_number || '',
         employee_id: userProfile.employee_id || '',
         department: userProfile.department || '',
-        role: userProfile.role || ''
+        role: userProfile.role || 'other_staff'
       });
+      setInitialLoad(false);
     }
-  }, [userProfile]);
+  }, [userProfile, initialLoad]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!userProfile?.id) {
+      toast.error('No user profile found. Please refresh the page.');
+      return;
+    }
+
     setLoading(true);
 
     try {
+      console.log('Updating profile for user:', userProfile.id);
+      console.log('Update data:', {
+        full_name: formData.full_name,
+        phone_number: formData.phone_number,
+        employee_id: formData.employee_id,
+        department: formData.department
+      });
+
       const { data, error } = await supabase
         .from('profiles')
         .update({
-          full_name: formData.full_name,
-          phone_number: formData.phone_number,
-          employee_id: formData.employee_id,
-          department: formData.department
+          full_name: formData.full_name.trim(),
+          phone_number: formData.phone_number.trim() || null,
+          employee_id: formData.employee_id.trim() || null,
+          department: formData.department.trim() || null,
+          updated_at: new Date().toISOString()
         })
         .eq('id', userProfile.id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Profile update error:', error);
+        throw error;
+      }
 
+      console.log('Profile updated successfully:', data);
       onProfileUpdate(data);
       toast.success('Profile updated successfully');
     } catch (error: any) {
       console.error('Error updating profile:', error);
-      toast.error('Error updating profile: ' + error.message);
+      toast.error('Error updating profile: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -84,6 +105,16 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
       default: return 'User';
     }
   };
+
+  if (!userProfile) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="text-center">
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -112,12 +143,13 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="full_name">Full Name</Label>
+                    <Label htmlFor="full_name">Full Name *</Label>
                     <Input
                       id="full_name"
                       value={formData.full_name}
                       onChange={(e) => handleInputChange('full_name', e.target.value)}
                       placeholder="Enter your full name"
+                      required
                     />
                   </div>
                   <div>
@@ -204,14 +236,18 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
                 <Label className="text-sm font-medium text-gray-600">Account Status</Label>
                 <p className="text-sm font-semibold text-green-600">Active</p>
               </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-600">Last Updated</Label>
-                <p className="text-sm">{new Date(userProfile?.updated_at).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-600">Member Since</Label>
-                <p className="text-sm">{new Date(userProfile?.created_at).toLocaleDateString()}</p>
-              </div>
+              {userProfile?.updated_at && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Last Updated</Label>
+                  <p className="text-sm">{new Date(userProfile.updated_at).toLocaleDateString()}</p>
+                </div>
+              )}
+              {userProfile?.created_at && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Member Since</Label>
+                  <p className="text-sm">{new Date(userProfile.created_at).toLocaleDateString()}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
