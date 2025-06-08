@@ -54,36 +54,24 @@ const Index = () => {
       console.log('Setting up profile for user:', user.id);
       setLoading(true);
       
-      // Simple profile fetch with quick fallback
+      // Quick profile fetch with immediate fallback
       console.log('Fetching profile...');
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Profile fetch error:', error);
-        // Create emergency fallback profile
-        const fallbackProfile = {
-          id: user.id,
-          email: user.email,
-          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          role: user.user_metadata?.role || 'other_staff',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        setUserProfile(fallbackProfile);
-        toast.error('Profile not found. Using temporary profile.');
-        return;
       }
 
       if (profile) {
         console.log('Profile found:', profile);
         setUserProfile(profile);
       } else {
-        console.log('No profile found, this should not happen with the trigger');
-        // Create emergency fallback profile
+        console.log('No profile found, creating fallback profile');
+        // Create immediate fallback profile without waiting for DB
         const fallbackProfile = {
           id: user.id,
           email: user.email,
@@ -93,6 +81,15 @@ const Index = () => {
           updated_at: new Date().toISOString()
         };
         setUserProfile(fallbackProfile);
+        
+        // Try to create profile in background without blocking UI
+        setTimeout(async () => {
+          try {
+            await supabase.from('profiles').insert(fallbackProfile);
+          } catch (err) {
+            console.log('Background profile creation failed, but continuing with fallback');
+          }
+        }, 100);
       }
     } catch (error) {
       console.error('Error in setupUserProfile:', error);
@@ -105,7 +102,6 @@ const Index = () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
-      toast.error('Error loading profile. Using temporary profile.');
     } finally {
       setLoading(false);
     }
@@ -136,7 +132,7 @@ const Index = () => {
   }
 
   if (!userProfile) {
-    return <LoadingSpinner message="Setting up your profile..." />;
+    return <LoadingSpinner message="Almost ready..." />;
   }
 
   return (
