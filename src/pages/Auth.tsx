@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/tabs';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Stethoscope } from 'lucide-react';
 
@@ -31,11 +31,25 @@ const Auth = () => {
     checkUser();
   }, []);
 
+  const cleanupAuthState = () => {
+    // Clean up any existing auth state
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      console.log('Attempting login...');
+      
+      // Clean up any existing state first
+      cleanupAuthState();
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginData.email,
         password: loginData.password,
@@ -44,6 +58,7 @@ const Auth = () => {
       if (error) throw error;
 
       if (data.user) {
+        console.log('Login successful, redirecting...');
         toast.success('Login successful!');
         window.location.href = '/';
       }
@@ -60,6 +75,11 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
+      console.log('Attempting signup...');
+      
+      // Clean up any existing state first
+      cleanupAuthState();
+      
       const { data, error } = await supabase.auth.signUp({
         email: signupData.email,
         password: signupData.password,
@@ -67,15 +87,19 @@ const Auth = () => {
           data: {
             full_name: signupData.fullName,
             role: signupData.role
-          },
-          emailRedirectTo: `${window.location.origin}/`
+          }
         }
       });
 
       if (error) throw error;
 
       if (data.user) {
-        toast.success('Account created successfully! Please check your email to verify your account.');
+        if (data.user.email_confirmed_at) {
+          toast.success('Account created successfully!');
+          window.location.href = '/';
+        } else {
+          toast.success('Account created! Please check your email to verify your account.');
+        }
       }
     } catch (error: any) {
       console.error('Signup error:', error);
