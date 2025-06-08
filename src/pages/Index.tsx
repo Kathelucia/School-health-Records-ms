@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/auth/LoadingSpinner';
-import LoginPage from '@/components/auth/LoginPage';
 import Dashboard from '@/components/dashboard/Dashboard';
+import { toast } from 'sonner';
 
 const Index = () => {
   const [session, setSession] = useState<any>(null);
@@ -24,6 +24,8 @@ const Index = () => {
         await setupUserProfile(initialSession.user);
       } else {
         setLoading(false);
+        // Redirect to auth page if no session
+        window.location.href = '/auth';
       }
     };
 
@@ -39,6 +41,8 @@ const Index = () => {
       } else {
         setUserProfile(null);
         setLoading(false);
+        // Redirect to auth page if no session
+        window.location.href = '/auth';
       }
     });
 
@@ -60,37 +64,35 @@ const Index = () => {
 
       if (error && error.code !== 'PGRST116') {
         console.error('Profile fetch error:', error);
-        throw error;
+        // Create emergency fallback profile
+        const fallbackProfile = {
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          role: user.user_metadata?.role || 'other_staff',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        setUserProfile(fallbackProfile);
+        toast.error('Profile not found. Using temporary profile.');
+        return;
       }
 
       if (profile) {
         console.log('Profile found:', profile);
         setUserProfile(profile);
       } else {
-        console.log('No profile found, creating one...');
-        
-        // Create basic profile
-        const profileData = {
+        console.log('No profile found, this should not happen with the trigger');
+        // Create emergency fallback profile
+        const fallbackProfile = {
           id: user.id,
           email: user.email,
           full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          role: user.user_metadata?.role || 'other_staff'
+          role: user.user_metadata?.role || 'other_staff',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         };
-        
-        const { data: newProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert(profileData)
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('Profile creation error:', createError);
-          // Use fallback profile if creation fails
-          setUserProfile(profileData);
-        } else {
-          console.log('Profile created:', newProfile);
-          setUserProfile(newProfile);
-        }
+        setUserProfile(fallbackProfile);
       }
     } catch (error) {
       console.error('Error in setupUserProfile:', error);
@@ -103,6 +105,7 @@ const Index = () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
+      toast.error('Error loading profile. Using temporary profile.');
     } finally {
       setLoading(false);
     }
@@ -117,8 +120,10 @@ const Index = () => {
       setSession(null);
       setUserProfile(null);
       console.log('User logged out successfully');
+      window.location.href = '/auth';
     } catch (error) {
       console.error('Error logging out:', error);
+      toast.error('Error logging out');
     }
   };
 
@@ -127,7 +132,7 @@ const Index = () => {
   }
 
   if (!session) {
-    return <LoginPage />;
+    return <LoadingSpinner message="Redirecting to login..." />;
   }
 
   if (!userProfile) {
