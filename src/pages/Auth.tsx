@@ -31,24 +31,12 @@ const Auth = () => {
     checkUser();
   }, []);
 
-  const cleanupAuthState = () => {
-    // Clean up any existing auth state
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
       console.log('Attempting login...');
-      
-      // Clean up any existing state first
-      cleanupAuthState();
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginData.email,
@@ -76,9 +64,6 @@ const Auth = () => {
 
     try {
       console.log('Attempting signup...');
-      
-      // Clean up any existing state first
-      cleanupAuthState();
       
       const { data, error } = await supabase.auth.signUp({
         email: signupData.email,
