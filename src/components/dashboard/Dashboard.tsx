@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
-import { Sidebar } from './Sidebar';
-import { Header } from './Header';
-import { DashboardHome } from './DashboardHome';
+import Sidebar from './Sidebar';
+import Header from './Header';
+import DashboardHome from './DashboardHome';
 import StudentProfiles from '@/components/students/StudentProfiles';
 import ClinicVisits from '@/components/clinic/ClinicVisits';
 import ImmunizationManagement from '@/components/immunizations/ImmunizationManagement';
@@ -50,7 +51,7 @@ const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
-        return <DashboardHome userProfile={userProfile} />;
+        return <DashboardHome userRole={userProfile.role} />;
       case 'students':
         return <StudentProfiles userRole={userProfile.role} />;
       case 'clinic':
@@ -68,9 +69,9 @@ const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
       case 'notifications':
         return <NotificationCenter userRole={userProfile.role} />;
       case 'settings':
-        return <Settings userProfile={userProfile} />;
+        return <Settings userProfile={userProfile} onProfileUpdate={() => {}} />;
       default:
-        return <DashboardHome userProfile={userProfile} />;
+        return <DashboardHome userRole={userProfile.role} />;
     }
   };
 
@@ -89,6 +90,7 @@ const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
           onLogout={onLogout} 
           onMenuClick={toggleSidebar}
           isSidebarOpen={isSidebarOpen}
+          currentView={activeTab}
         />
         
         <main className="flex-1 overflow-y-auto bg-gray-50">

@@ -5,9 +5,12 @@ import { LogOut, Menu, Bell, User } from 'lucide-react';
 interface HeaderProps {
   userProfile: any;
   currentView: string;
+  onLogout: () => void;
+  onMenuClick: () => void;
+  isSidebarOpen: boolean;
 }
 
-const Header = ({ userProfile, currentView }: HeaderProps) => {
+const Header = ({ userProfile, currentView, onLogout, onMenuClick, isSidebarOpen }: HeaderProps) => {
   const getRoleDisplayName = (role: string) => {
     switch (role) {
       case 'nurse': return 'School Nurse';
@@ -32,15 +35,16 @@ const Header = ({ userProfile, currentView }: HeaderProps) => {
 
   const getPageTitle = (view: string) => {
     switch (view) {
-      case 'dashboard': return 'Dashboard Overview';
+      case 'home': return 'Dashboard Overview';
       case 'students': return 'Student Health Profiles';
       case 'clinic': return 'Clinic Visit Management';
       case 'immunizations': return 'Immunization Records';
-      case 'medications': return 'Medication Inventory';
+      case 'medication': return 'Medication Inventory';
       case 'reports': return 'Health Reports & Analytics';
       case 'notifications': return 'System Notifications';
       case 'audit': return 'Audit Trail';
       case 'settings': return 'System Settings';
+      case 'bulk-upload': return 'Bulk Data Upload';
       default: return 'Health Records Management';
     }
   };
@@ -48,6 +52,15 @@ const Header = ({ userProfile, currentView }: HeaderProps) => {
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
       <div className="flex items-center space-x-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onMenuClick}
+          className="md:hidden"
+        >
+          <Menu className="w-4 h-4" />
+        </Button>
+        
         <div>
           <h1 className="text-xl font-semibold text-gray-900">
             {getPageTitle(currentView)}
@@ -93,6 +106,15 @@ const Header = ({ userProfile, currentView }: HeaderProps) => {
           <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-blue-600 rounded-full flex items-center justify-center">
             <User className="w-4 h-4 text-white" />
           </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onLogout}
+            className="text-red-600 hover:bg-red-50"
+          >
+            <LogOut className="w-4 h-4" />
+          </Button>
         </div>
       </div>
     </header>

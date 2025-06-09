@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import {
   Home,
@@ -11,7 +12,6 @@ import {
   BarChart3,
   Upload
 } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -27,9 +27,10 @@ interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   userRole: string;
+  isOpen: boolean;
 }
 
-const Sidebar = ({ activeTab, onTabChange, userRole }: SidebarProps) => {
+const Sidebar = ({ activeTab, onTabChange, userRole, isOpen }: SidebarProps) => {
   const navigationItems = [
     { id: 'home', label: 'Dashboard', icon: Home, roles: ['nurse', 'clinical_officer', 'admin', 'other_staff'] },
     { id: 'students', label: 'Student Profiles', icon: Users, roles: ['nurse', 'clinical_officer', 'admin'] },
@@ -42,6 +43,10 @@ const Sidebar = ({ activeTab, onTabChange, userRole }: SidebarProps) => {
     { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['nurse', 'clinical_officer', 'admin'] },
     { id: 'settings', label: 'Settings', icon: Settings, roles: ['nurse', 'clinical_officer', 'admin', 'other_staff'] },
   ];
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col h-full bg-gray-50 border-r py-4 w-60">
@@ -69,43 +74,6 @@ const Sidebar = ({ activeTab, onTabChange, userRole }: SidebarProps) => {
           })}
         </ul>
       </nav>
-      <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="outline" className="absolute bottom-4 left-4 md:hidden">
-          <Menu className="w-4 h-4 mr-2" />
-          Menu
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="md:hidden">
-        <SheetHeader>
-          <SheetTitle>Menu</SheetTitle>
-          <SheetDescription>
-            Select an option to manage
-          </SheetDescription>
-        </SheetHeader>
-          <nav className="flex-1">
-            <ul>
-              {navigationItems.map((item) => {
-                if (!item.roles.includes(userRole)) {
-                  return null;
-                }
-                return (
-                  <li key={item.id} className="mb-1">
-                    <Button
-                      variant="ghost"
-                      className={`w-full justify-start font-normal px-6 py-2 ${activeTab === item.id ? 'bg-gray-100' : ''}`}
-                      onClick={() => onTabChange(item.id)}
-                    >
-                      <item.icon className="w-4 h-4 mr-2" />
-                      {item.label}
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-      </SheetContent>
-    </Sheet>
     </div>
   );
 };
