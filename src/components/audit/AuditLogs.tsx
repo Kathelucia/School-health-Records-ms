@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, FileText, Calendar, User } from 'lucide-react';
+import { Search, FileText, Calendar, User, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -23,6 +24,8 @@ const AuditLogs = ({ userRole }: AuditLogsProps) => {
   useEffect(() => {
     if (userRole === 'admin') {
       fetchAuditLogs();
+    } else {
+      setLoading(false);
     }
   }, [userRole]);
 
@@ -36,13 +39,25 @@ const AuditLogs = ({ userRole }: AuditLogsProps) => {
         .from('audit_logs')
         .select(`
           *,
-          profiles(full_name, email)
+          profiles!audit_logs_user_id_fkey(full_name, email)
         `)
         .order('created_at', { ascending: false })
         .limit(500);
 
-      if (error) throw error;
-      setLogs(data || []);
+      if (error) {
+        console.error('Audit logs error:', error);
+        // Try without the join if there's an issue
+        const { data: simpleData, error: simpleError } = await supabase
+          .from('audit_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(500);
+        
+        if (simpleError) throw simpleError;
+        setLogs(simpleData || []);
+      } else {
+        setLogs(data || []);
+      }
     } catch (error: any) {
       console.error('Error fetching audit logs:', error);
       toast.error('Error loading audit logs');
@@ -72,6 +87,42 @@ const AuditLogs = ({ userRole }: AuditLogsProps) => {
     }
 
     setFilteredLogs(filtered);
+  };
+
+  const downloadAuditReport = () => {
+    try {
+      const csvContent = generateCSV(filteredLogs);
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit_logs_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Audit report downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      toast.error('Error downloading audit report');
+    }
+  };
+
+  const generateCSV = (data: any[]) => {
+    const headers = ['Date', 'User', 'Action', 'Table', 'Record ID', 'IP Address'];
+    const csvRows = [headers.join(',')];
+
+    data.forEach((log: any) => {
+      const row = [
+        new Date(log.created_at).toLocaleString(),
+        log.profiles?.full_name || 'System',
+        log.action,
+        log.table_name || '',
+        log.record_id || '',
+        log.ip_address || ''
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    return csvRows.join('\n');
   };
 
   const getActionColor = (action: string) => {
@@ -121,9 +172,15 @@ const AuditLogs = ({ userRole }: AuditLogsProps) => {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Audit Logs</h2>
-        <p className="text-gray-600">Track all system activities and data changes</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Audit Logs</h2>
+          <p className="text-gray-600">Track all system activities and data changes</p>
+        </div>
+        <Button onClick={downloadAuditReport} className="flex items-center">
+          <Download className="w-4 h-4 mr-2" />
+          Download Report
+        </Button>
       </div>
 
       {/* Filters */}

@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,13 +30,15 @@ const ImmunizationForm = ({ student, onClose, onSave, requirements }: Immunizati
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showStudentSearch, setShowStudentSearch] = useState(false);
 
-  // Fetch students if no student is pre-selected
-  useState(() => {
+  useEffect(() => {
     if (!student) {
       fetchStudents();
+    } else {
+      setSearchTerm(`${student.full_name} (${student.student_id})`);
     }
-  });
+  }, [student]);
 
   const fetchStudents = async () => {
     try {
@@ -50,11 +52,23 @@ const ImmunizationForm = ({ student, onClose, onSave, requirements }: Immunizati
       setStudents(data || []);
     } catch (error) {
       console.error('Error fetching students:', error);
+      toast.error('Error loading students');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.student_id) {
+      toast.error('Please select a student');
+      return;
+    }
+    
+    if (!formData.vaccine_name) {
+      toast.error('Please select a vaccine');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -82,6 +96,19 @@ const ImmunizationForm = ({ student, onClose, onSave, requirements }: Immunizati
     s.student_id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const commonVaccines = [
+    'BCG',
+    'DPT',
+    'Polio',
+    'MMR',
+    'Hepatitis B',
+    'Tetanus',
+    'Meningitis',
+    'Yellow Fever',
+    'HPV',
+    'Typhoid'
+  ];
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -96,30 +123,41 @@ const ImmunizationForm = ({ student, onClose, onSave, requirements }: Immunizati
           {!student && (
             <div className="space-y-2">
               <Label htmlFor="student_search">Select Student</Label>
-              <Input
-                id="student_search"
-                placeholder="Search for a student..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <Card className="max-h-40 overflow-y-auto">
-                  <CardContent className="p-2">
-                    {filteredStudents.map((s: any) => (
-                      <div
-                        key={s.id}
-                        className="p-2 hover:bg-gray-100 cursor-pointer rounded"
-                        onClick={() => {
-                          setFormData({ ...formData, student_id: s.id });
-                          setSearchTerm(`${s.full_name} (${s.student_id})`);
-                        }}
-                      >
-                        {s.full_name} - {s.student_id} ({s.form_level?.replace('_', ' ')})
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
+              <div className="relative">
+                <Input
+                  id="student_search"
+                  placeholder="Search for a student..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setShowStudentSearch(true);
+                  }}
+                  onFocus={() => setShowStudentSearch(true)}
+                />
+                {showStudentSearch && searchTerm && (
+                  <Card className="absolute z-10 w-full mt-1 max-h-40 overflow-y-auto">
+                    <CardContent className="p-2">
+                      {filteredStudents.length > 0 ? (
+                        filteredStudents.map((s: any) => (
+                          <div
+                            key={s.id}
+                            className="p-2 hover:bg-gray-100 cursor-pointer rounded"
+                            onClick={() => {
+                              setFormData({ ...formData, student_id: s.id });
+                              setSearchTerm(`${s.full_name} (${s.student_id})`);
+                              setShowStudentSearch(false);
+                            }}
+                          >
+                            {s.full_name} - {s.student_id} ({s.form_level?.replace('_', ' ')})
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-2 text-gray-500">No students found</div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </div>
           )}
 
@@ -133,6 +171,11 @@ const ImmunizationForm = ({ student, onClose, onSave, requirements }: Immunizati
                 <SelectValue placeholder="Select vaccine" />
               </SelectTrigger>
               <SelectContent>
+                {commonVaccines.map((vaccine) => (
+                  <SelectItem key={vaccine} value={vaccine}>
+                    {vaccine}
+                  </SelectItem>
+                ))}
                 {requirements.map((req: any) => (
                   <SelectItem key={req.id} value={req.vaccine_name}>
                     {req.vaccine_name} {req.is_mandatory && '(Required)'}

@@ -1,18 +1,16 @@
-
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import Sidebar from './Sidebar';
-import Header from './Header';
-import DashboardHome from './DashboardHome';
-import StudentProfiles from '../students/StudentProfiles';
-import ClinicVisits from '../clinic/ClinicVisits';
-import ImmunizationManagement from '../immunizations/ImmunizationManagement';
-import MedicationInventory from '../medication/MedicationInventory';
-import Reports from '../reports/Reports';
-import NotificationCenter from '../notifications/NotificationCenter';
-import AuditLogs from '../audit/AuditLogs';
-import Settings from '../settings/Settings';
+import { Sidebar } from './Sidebar';
+import { Header } from './Header';
+import { DashboardHome } from './DashboardHome';
+import StudentProfiles from '@/components/students/StudentProfiles';
+import ClinicVisits from '@/components/clinic/ClinicVisits';
+import ImmunizationManagement from '@/components/immunizations/ImmunizationManagement';
+import MedicationInventory from '@/components/medication/MedicationInventory';
+import AuditLogs from '@/components/audit/AuditLogs';
+import NotificationCenter from '@/components/notifications/NotificationCenter';
+import Settings from '@/components/settings/Settings';
+import BulkUpload from '@/components/database/BulkUpload';
+import ReportDownloader from '@/components/reports/ReportDownloader';
 
 interface DashboardProps {
   userProfile: any;
@@ -20,101 +18,80 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
-  const [currentView, setCurrentView] = useState('dashboard');
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [currentUserProfile, setCurrentUserProfile] = useState(userProfile);
+  const [activeTab, setActiveTab] = useState('home');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    setCurrentUserProfile(userProfile);
-  }, [userProfile]);
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 768);
+      setIsSidebarOpen(window.innerWidth >= 768);
+    };
 
-  useEffect(() => {
-    fetchNotificationCount();
-    
-    // Reduce alert checking frequency to improve performance
-    const alertInterval = setInterval(checkMedicationAlerts, 600000); // 10 minutes instead of 5
-    checkMedicationAlerts();
-    
-    return () => clearInterval(alertInterval);
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+    };
   }, []);
 
-  const fetchNotificationCount = async () => {
-    try {
-      const { count, error } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_read', false);
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
-      if (error) throw error;
-      setUnreadNotifications(count || 0);
-    } catch (error) {
-      console.error('Error fetching notification count:', error);
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (isMobile) {
+      setIsSidebarOpen(false);
     }
   };
 
-  const checkMedicationAlerts = async () => {
-    try {
-      await supabase.rpc('check_medication_alerts');
-      fetchNotificationCount();
-    } catch (error) {
-      console.error('Error checking medication alerts:', error);
-    }
-  };
-
-  const handleProfileUpdate = (updatedProfile: any) => {
-    setCurrentUserProfile(updatedProfile);
-  };
-
-  // Memoize content rendering to prevent unnecessary re-renders
   const renderContent = () => {
-    const userRole = currentUserProfile?.role || '';
-
-    switch (currentView) {
-      case 'dashboard':
-        return <DashboardHome userRole={userRole} />;
+    switch (activeTab) {
+      case 'home':
+        return <DashboardHome userProfile={userProfile} />;
       case 'students':
-        return <StudentProfiles userRole={userRole} />;
+        return <StudentProfiles userRole={userProfile.role} />;
       case 'clinic':
-        return <ClinicVisits userRole={userRole} />;
+        return <ClinicVisits userRole={userProfile.role} />;
       case 'immunizations':
-        return <ImmunizationManagement userRole={userRole} />;
-      case 'medications':
-        return <MedicationInventory userRole={userRole} />;
+        return <ImmunizationManagement userRole={userProfile.role} />;
+      case 'medication':
+        return <MedicationInventory userRole={userProfile.role} />;
       case 'reports':
-        return <Reports userRole={userRole} />;
-      case 'notifications':
-        return <NotificationCenter userRole={userRole} />;
+        return <ReportDownloader userRole={userProfile.role} />;
+      case 'bulk-upload':
+        return <BulkUpload userRole={userProfile.role} />;
       case 'audit':
-        return <AuditLogs userRole={userRole} />;
+        return <AuditLogs userRole={userProfile.role} />;
+      case 'notifications':
+        return <NotificationCenter userRole={userProfile.role} />;
       case 'settings':
-        return (
-          <Settings 
-            userProfile={currentUserProfile} 
-            onProfileUpdate={handleProfileUpdate}
-          />
-        );
+        return <Settings userProfile={userProfile} />;
       default:
-        return <DashboardHome userRole={userRole} />;
+        return <DashboardHome userProfile={userProfile} />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar
-        currentView={currentView}
-        onViewChange={setCurrentView}
-        onLogout={onLogout}
-        userRole={currentUserProfile?.role || ''}
-        unreadNotifications={unreadNotifications}
+    <div className="flex h-screen bg-gray-100">
+      <Sidebar 
+        activeTab={activeTab} 
+        onTabChange={handleTabChange} 
+        isOpen={isSidebarOpen}
+        userRole={userProfile.role}
       />
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <Header 
-          userProfile={currentUserProfile}
-          currentView={currentView}
+          userProfile={userProfile} 
+          onLogout={onLogout} 
+          onMenuClick={toggleSidebar}
+          isSidebarOpen={isSidebarOpen}
         />
         
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-y-auto bg-gray-50">
           {renderContent()}
         </main>
       </div>

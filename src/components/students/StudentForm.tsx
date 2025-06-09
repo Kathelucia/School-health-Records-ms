@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -43,6 +43,11 @@ const StudentForm = ({ student, onClose, onSave }: StudentFormProps) => {
     is_active: true
   });
 
+  const [validationErrors, setValidationErrors] = useState({
+    student_id: '',
+    admission_number: ''
+  });
+
   useEffect(() => {
     if (student) {
       setFormData({
@@ -68,15 +73,69 @@ const StudentForm = ({ student, onClose, onSave }: StudentFormProps) => {
     }
   }, [student]);
 
+  const validateStudentId = (value: string) => {
+    // Student ID should be alphanumeric (letters and numbers)
+    const studentIdPattern = /^[A-Za-z0-9]+$/;
+    if (!value) return '';
+    if (!studentIdPattern.test(value)) {
+      return 'Student ID must contain only letters and numbers';
+    }
+    if (value.length < 3) {
+      return 'Student ID must be at least 3 characters long';
+    }
+    return '';
+  };
+
+  const validateAdmissionNumber = (value: string) => {
+    // Admission number should be numbers only
+    const admissionPattern = /^[0-9]+$/;
+    if (!value) return '';
+    if (!admissionPattern.test(value)) {
+      return 'Admission number must contain only numbers';
+    }
+    if (value.length < 4) {
+      return 'Admission number must be at least 4 digits long';
+    }
+    return '';
+  };
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+
+    // Validate student_id and admission_number in real-time
+    if (field === 'student_id') {
+      setValidationErrors(prev => ({
+        ...prev,
+        student_id: validateStudentId(value)
+      }));
+    }
+    if (field === 'admission_number') {
+      setValidationErrors(prev => ({
+        ...prev,
+        admission_number: validateAdmissionNumber(value)
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate before submission
+    const studentIdError = validateStudentId(formData.student_id);
+    const admissionNumberError = validateAdmissionNumber(formData.admission_number);
+    
+    if (studentIdError || admissionNumberError) {
+      setValidationErrors({
+        student_id: studentIdError,
+        admission_number: admissionNumberError
+      });
+      toast.error('Please fix validation errors before submitting');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -214,25 +273,31 @@ const StudentForm = ({ student, onClose, onSave }: StudentFormProps) => {
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="student_id">Student ID</Label>
+                    <Label htmlFor="student_id">Student ID (Letters & Numbers)</Label>
                     <Input
                       id="student_id"
                       value={formData.student_id}
-                      onChange={(e) => handleInputChange('student_id', e.target.value)}
-                      placeholder="Enter student ID"
-                      className="transition-all focus:ring-2 focus:ring-blue-500"
+                      onChange={(e) => handleInputChange('student_id', e.target.value.toUpperCase())}
+                      placeholder="e.g., STU001, ABC123"
+                      className={`transition-all focus:ring-2 focus:ring-blue-500 ${validationErrors.student_id ? 'border-red-500' : ''}`}
                     />
+                    {validationErrors.student_id && (
+                      <p className="text-sm text-red-600">{validationErrors.student_id}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="admission_number">Admission Number</Label>
+                    <Label htmlFor="admission_number">Admission Number (Numbers Only)</Label>
                     <Input
                       id="admission_number"
                       value={formData.admission_number}
                       onChange={(e) => handleInputChange('admission_number', e.target.value)}
-                      placeholder="Enter admission number"
-                      className="transition-all focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g., 2024001, 1234"
+                      className={`transition-all focus:ring-2 focus:ring-blue-500 ${validationErrors.admission_number ? 'border-red-500' : ''}`}
                     />
+                    {validationErrors.admission_number && (
+                      <p className="text-sm text-red-600">{validationErrors.admission_number}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
