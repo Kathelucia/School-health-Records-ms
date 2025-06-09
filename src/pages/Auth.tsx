@@ -25,34 +25,59 @@ const Auth = () => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        console.log('User already logged in, redirecting to dashboard');
         window.location.href = '/';
       }
     };
     checkUser();
   }, []);
 
+  const cleanupAuthState = () => {
+    // Clean up any existing auth state
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      console.log('Attempting login...');
+      console.log('Attempting login with email:', loginData.email);
+      
+      // Clean up any existing state first
+      cleanupAuthState();
       
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginData.email,
+        email: loginData.email.trim(),
         password: loginData.password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Login error:', error);
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error('Invalid email or password. Please check your credentials.');
+        } else {
+          toast.error(error.message);
+        }
+        return;
+      }
 
       if (data.user) {
-        console.log('Login successful, redirecting...');
-        toast.success('Login successful!');
-        window.location.href = '/';
+        console.log('Login successful for user:', data.user.id);
+        toast.success('Login successful! Redirecting...');
+        
+        // Force page refresh to ensure clean state
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 500);
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      toast.error(error.message || 'Login failed');
+      toast.error('Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -63,32 +88,65 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      console.log('Attempting signup...');
+      console.log('Attempting signup with email:', signupData.email);
+      
+      // Basic validation
+      if (signupData.password.length < 6) {
+        toast.error('Password must be at least 6 characters long');
+        return;
+      }
+      
+      if (!signupData.fullName.trim()) {
+        toast.error('Full name is required');
+        return;
+      }
+      
+      // Clean up any existing state first
+      cleanupAuthState();
       
       const { data, error } = await supabase.auth.signUp({
-        email: signupData.email,
+        email: signupData.email.trim(),
         password: signupData.password,
         options: {
           data: {
-            full_name: signupData.fullName,
+            full_name: signupData.fullName.trim(),
             role: signupData.role
           }
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Signup error:', error);
+        if (error.message.includes('already registered')) {
+          toast.error('This email is already registered. Please sign in instead.');
+        } else {
+          toast.error(error.message);
+        }
+        return;
+      }
 
       if (data.user) {
+        console.log('Signup successful for user:', data.user.id);
+        
         if (data.user.email_confirmed_at) {
-          toast.success('Account created successfully!');
-          window.location.href = '/';
+          toast.success('Account created successfully! Redirecting...');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 500);
         } else {
-          toast.success('Account created! Please check your email to verify your account.');
+          toast.success('Account created! You can now sign in.');
+          // Switch to login tab
+          const loginTab = document.querySelector('[value="login"]') as HTMLElement;
+          if (loginTab) {
+            loginTab.click();
+          }
+          // Pre-fill login email
+          setLoginData({ ...loginData, email: signupData.email });
         }
       }
     } catch (error: any) {
       console.error('Signup error:', error);
-      toast.error(error.message || 'Signup failed');
+      toast.error('Signup failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -132,6 +190,7 @@ const Auth = () => {
                       onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
                       placeholder="nurse@school.edu"
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   <div>
@@ -144,6 +203,7 @@ const Auth = () => {
                         onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                         placeholder="Enter your password"
                         required
+                        disabled={isLoading}
                       />
                       <Button
                         type="button"
@@ -151,6 +211,7 @@ const Auth = () => {
                         size="sm"
                         className="absolute right-0 top-0 h-full px-3"
                         onClick={() => setShowPassword(!showPassword)}
+                        disabled={isLoading}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
@@ -182,6 +243,7 @@ const Auth = () => {
                       onChange={(e) => setSignupData({ ...signupData, fullName: e.target.value })}
                       placeholder="Dr. Jane Smith"
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   <div>
@@ -193,6 +255,7 @@ const Auth = () => {
                       onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
                       placeholder="jane.smith@school.edu"
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   <div>
@@ -203,6 +266,7 @@ const Auth = () => {
                       onChange={(e) => setSignupData({ ...signupData, role: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
+                      disabled={isLoading}
                     >
                       <option value="nurse">School Nurse</option>
                       <option value="clinical_officer">Clinical Officer</option>
@@ -221,6 +285,7 @@ const Auth = () => {
                         placeholder="Create a strong password"
                         required
                         minLength={6}
+                        disabled={isLoading}
                       />
                       <Button
                         type="button"
@@ -228,6 +293,7 @@ const Auth = () => {
                         size="sm"
                         className="absolute right-0 top-0 h-full px-3"
                         onClick={() => setShowPassword(!showPassword)}
+                        disabled={isLoading}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>

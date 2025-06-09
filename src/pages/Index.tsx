@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/auth/LoadingSpinner';
@@ -13,109 +12,112 @@ const Index = () => {
   useEffect(() => {
     console.log('Setting up auth state listener...');
     
-    // Get initial session
-    const getInitialSession = async () => {
-      console.log('Checking existing session...');
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
-      console.log('Initial session check:', initialSession?.user?.email || 'No session');
-      
-      if (initialSession?.user) {
-        setSession(initialSession);
-        await setupUserProfile(initialSession.user);
-      } else {
-        setLoading(false);
-        // Redirect to auth page if no session
-        window.location.href = '/auth';
-      }
-    };
-
-    getInitialSession();
-
-    // Listen for auth changes
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email || 'No user');
       
       if (session?.user) {
         setSession(session);
-        await setupUserProfile(session.user);
+        // Create immediate fallback profile for fast access
+        const profile = {
+          id: session.user.id,
+          email: session.user.email,
+          full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+          role: session.user.user_metadata?.role || 'other_staff',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        setUserProfile(profile);
+        setLoading(false);
+        
+        // Try to get/create real profile in background
+        setTimeout(() => {
+          setupUserProfile(session.user, profile);
+        }, 100);
       } else {
         setSession(null);
         setUserProfile(null);
         setLoading(false);
-        // Redirect to auth page if no session
-        window.location.href = '/auth';
+        // Only redirect to auth if we're not already there
+        if (window.location.pathname !== '/auth') {
+          window.location.href = '/auth';
+        }
       }
     });
+
+    // Check for existing session
+    const checkSession = async () => {
+      console.log('Checking existing session...');
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
+      console.log('Existing session:', existingSession?.user?.email || 'No session');
+      
+      if (!existingSession?.user) {
+        setLoading(false);
+        if (window.location.pathname !== '/auth') {
+          window.location.href = '/auth';
+        }
+      }
+      // If session exists, the auth state change listener will handle it
+    };
+
+    checkSession();
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const setupUserProfile = async (user: any) => {
+  const setupUserProfile = async (user: any, fallbackProfile: any) => {
     try {
       console.log('Setting up profile for user:', user.id);
       
-      // Quick profile fetch with shorter timeout
-      console.log('Fetching profile...');
+      // Try to fetch existing profile
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
 
-      if (error) {
+      if (error && !error.message.includes('No rows')) {
         console.error('Profile fetch error:', error);
-        // Create fallback profile immediately on any error
-        createFallbackProfile(user);
-        return;
+        return; // Keep using fallback
       }
 
       if (profile) {
         console.log('Profile found:', profile);
         setUserProfile(profile);
       } else {
-        console.log('No profile found, creating fallback profile...');
-        createFallbackProfile(user);
+        console.log('No profile found, creating one...');
+        // Try to create profile
+        const { data: newProfile, error: insertError } = await supabase
+          .from('profiles')
+          .insert([fallbackProfile])
+          .select()
+          .maybeSingle();
+
+        if (insertError) {
+          console.error('Profile creation error:', insertError);
+          // Keep using fallback profile
+        } else if (newProfile) {
+          console.log('Profile created successfully:', newProfile);
+          setUserProfile(newProfile);
+        }
       }
     } catch (error) {
       console.error('Error in setupUserProfile:', error);
-      // Create emergency fallback profile
-      createFallbackProfile(user);
-    } finally {
-      setLoading(false);
+      // Keep using fallback profile
     }
-  };
-
-  const createFallbackProfile = (user: any) => {
-    console.log('Creating fallback profile for immediate dashboard access');
-    const fallbackProfile = {
-      id: user.id,
-      email: user.email,
-      full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-      role: user.user_metadata?.role || 'other_staff',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    setUserProfile(fallbackProfile);
-    
-    // Try to create the actual profile in the background
-    setTimeout(async () => {
-      try {
-        await supabase
-          .from('profiles')
-          .insert(fallbackProfile)
-          .select()
-          .single();
-        console.log('Background profile creation successful');
-      } catch (error) {
-        console.log('Background profile creation failed, but fallback is working:', error);
-      }
-    }, 1000);
   };
 
   const handleLogout = async () => {
     try {
       console.log('Logging out user...');
       setLoading(true);
+      
+      // Clean up auth state
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
       
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -132,15 +134,11 @@ const Index = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner message="Loading dashboard..." subMessage="Almost there!" />;
+    return <LoadingSpinner message="Loading dashboard..." subMessage="Setting up your session..." />;
   }
 
-  if (!session) {
+  if (!session || !userProfile) {
     return <LoadingSpinner message="Redirecting to login..." subMessage="Just a moment..." />;
-  }
-
-  if (!userProfile) {
-    return <LoadingSpinner message="Setting up profile..." subMessage="This will be quick!" />;
   }
 
   return (
