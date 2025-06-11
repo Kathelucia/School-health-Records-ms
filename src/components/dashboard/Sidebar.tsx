@@ -13,15 +13,6 @@ import {
   Upload
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-import { Menu } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -33,20 +24,23 @@ interface SidebarProps {
 const Sidebar = ({ activeTab, onTabChange, userRole, isOpen }: SidebarProps) => {
   const navigationItems = [
     { id: 'home', label: 'Dashboard', icon: Home, roles: ['nurse', 'clinical_officer', 'admin', 'other_staff'] },
-    { id: 'students', label: 'Student Profiles', icon: Users, roles: ['nurse', 'clinical_officer', 'admin'] },
+    { id: 'students', label: 'Student Profiles', icon: Users, roles: ['nurse', 'clinical_officer', 'admin', 'other_staff'] },
     { id: 'clinic', label: 'Clinic Visits', icon: Stethoscope, roles: ['nurse', 'clinical_officer', 'admin'] },
     { id: 'immunizations', label: 'Immunizations', icon: Syringe, roles: ['nurse', 'clinical_officer', 'admin'] },
     { id: 'medication', label: 'Medication', icon: Pill, roles: ['nurse', 'clinical_officer', 'admin'] },
-    { id: 'reports', label: 'Reports', icon: BarChart3, roles: ['nurse', 'clinical_officer', 'admin'] },
+    { id: 'reports', label: 'Reports', icon: BarChart3, roles: ['nurse', 'clinical_officer', 'admin', 'other_staff'] },
     { id: 'bulk-upload', label: 'Bulk Upload', icon: Upload, roles: ['admin'] },
     { id: 'audit', label: 'Audit Logs', icon: FileText, roles: ['admin'] },
-    { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['nurse', 'clinical_officer', 'admin'] },
+    { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['nurse', 'clinical_officer', 'admin', 'other_staff'] },
     { id: 'settings', label: 'Settings', icon: Settings, roles: ['nurse', 'clinical_officer', 'admin', 'other_staff'] },
   ];
 
   if (!isOpen) {
     return null;
   }
+
+  // Ensure userRole has a fallback
+  const currentUserRole = userRole || 'other_staff';
 
   return (
     <div className="flex flex-col h-full bg-gray-50 border-r py-4 w-60">
@@ -56,7 +50,7 @@ const Sidebar = ({ activeTab, onTabChange, userRole, isOpen }: SidebarProps) => 
       <nav className="flex-1">
         <ul>
           {navigationItems.map((item) => {
-            if (!item.roles.includes(userRole)) {
+            if (!item.roles.includes(currentUserRole)) {
               return null;
             }
             return (

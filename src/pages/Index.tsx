@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/auth/LoadingSpinner';
@@ -24,6 +25,10 @@ const Index = () => {
           email: session.user.email,
           full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
           role: session.user.user_metadata?.role || 'other_staff',
+          employee_id: `EMP${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+          department: 'Health Services',
+          phone_number: session.user.user_metadata?.phone || null,
+          is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -83,7 +88,14 @@ const Index = () => {
 
       if (profile) {
         console.log('Profile found:', profile);
-        setUserProfile(profile);
+        // Ensure profile has all necessary fields
+        const completeProfile = {
+          ...profile,
+          employee_id: profile.employee_id || `EMP${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+          department: profile.department || 'Health Services',
+          is_active: profile.is_active !== undefined ? profile.is_active : true
+        };
+        setUserProfile(completeProfile);
       } else {
         console.log('No profile found, creating one...');
         // Try to create profile
