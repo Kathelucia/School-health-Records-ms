@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "postbuild": "node copy-redirects.js"
+    "postbuild": "node copy-redirects.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
