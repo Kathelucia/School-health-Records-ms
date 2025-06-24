@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import {
   Home,
@@ -31,8 +30,9 @@ const Sidebar = ({ activeTab, onTabChange, userRole, isOpen }: SidebarProps) => 
     { id: 'reports', label: 'Reports', icon: BarChart3, roles: ['nurse', 'clinical_officer', 'admin', 'other_staff'] },
     { id: 'bulk-upload', label: 'Bulk Upload', icon: Upload, roles: ['admin'] },
     { id: 'audit', label: 'Audit Logs', icon: FileText, roles: ['admin'] },
-    { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['nurse', 'clinical_officer', 'admin', 'other_staff'] },
-    { id: 'settings', label: 'Settings', icon: Settings, roles: ['nurse', 'clinical_officer', 'admin', 'other_staff'] },
+    { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['nurse', 'clinical_officer', 'admin', 'other_staff', 'it_support'] },
+    { id: 'settings', label: 'Settings', icon: Settings, roles: ['nurse', 'clinical_officer', 'admin', 'other_staff', 'it_support'] },
+    { id: 'contact-admin', label: 'Contact Admin', icon: Bell, roles: ['nurse', 'clinical_officer', 'other_staff', 'it_support'] },
   ];
 
   if (!isOpen) {

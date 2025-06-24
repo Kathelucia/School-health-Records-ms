@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/auth/LoadingSpinner';
@@ -81,6 +80,8 @@ const Index = () => {
         .eq('id', user.id)
         .maybeSingle();
 
+      console.log('Fetched profile:', profile);
+
       if (error && !error.message.includes('No rows')) {
         console.error('Profile fetch error:', error);
         return; // Keep using fallback
@@ -144,6 +145,30 @@ const Index = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!session?.user) return;
+    // Subscribe to changes on the current user's profile
+    const channel = supabase.channel('profile-realtime-' + session.user.id)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${session.user.id}` },
+        (payload) => {
+          console.log('Realtime profile change detected:', payload);
+          // Refetch the user profile when it changes
+          setupUserProfile(session.user, userProfile);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user]);
+
+  // Debug log for userProfile before rendering Dashboard
+  useEffect(() => {
+    console.log('Rendering Dashboard with userProfile:', userProfile);
+  }, [userProfile]);
 
   if (loading) {
     return <LoadingSpinner message="Loading dashboard..." subMessage="Setting up your session..." />;

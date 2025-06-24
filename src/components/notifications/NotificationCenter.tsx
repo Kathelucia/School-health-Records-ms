@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -147,40 +146,97 @@ const NotificationCenter = ({ userRole }: NotificationCenterProps) => {
         </div>
       ) : notifications.length > 0 ? (
         <div className="space-y-4">
-          {notifications.map((notification: any) => (
-            <Card 
-              key={notification.id} 
-              className={`border-l-4 ${getNotificationColor(notification.type)} ${!notification.is_read ? 'shadow-md' : ''}`}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    {getNotificationIcon(notification.type)}
-                    <div>
-                      <CardTitle className={`text-lg ${!notification.is_read ? 'font-bold' : 'font-medium'}`}>
-                        {notification.title}
-                      </CardTitle>
-                      <CardDescription>
-                        {new Date(notification.created_at).toLocaleString()}
-                      </CardDescription>
+          {notifications.map((notification: any) => {
+            const isRoleChangeRequest = notification.type === 'role_change_request';
+            return (
+              <Card 
+                key={notification.id} 
+                className={`border-l-4 ${getNotificationColor(notification.type)} ${!notification.is_read ? 'shadow-md' : ''}`}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3">
+                      {getNotificationIcon(notification.type)}
+                      <div>
+                        <CardTitle className={`text-lg ${!notification.is_read ? 'font-bold' : 'font-medium'}`}>
+                          {notification.title}
+                        </CardTitle>
+                        <CardDescription>
+                          {new Date(notification.created_at).toLocaleString()}
+                        </CardDescription>
+                      </div>
                     </div>
+                    {!notification.is_read && !isRoleChangeRequest && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => markAsRead(notification.id)}
+                      >
+                        <Check className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
-                  {!notification.is_read && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => markAsRead(notification.id)}
-                    >
-                      <Check className="w-4 h-4" />
-                    </Button>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-700">{notification.message}</p>
+                  {/* Role Change Request Actions for Admin */}
+                  {isRoleChangeRequest && userRole === 'admin' && (
+                    <div className="mt-4 flex gap-2">
+                      <Button size="sm" variant="outline" onClick={async () => {
+                        // Parse extra_data for requestedRole
+                        let requestedRole = '';
+                        try {
+                          requestedRole = JSON.parse(notification.extra_data).requestedRole;
+                        } catch {}
+                        if (!requestedRole) {
+                          toast.error('Invalid role request data.');
+                          return;
+                        }
+                        // Update user role
+                        const { error } = await supabase.from('profiles').update({ role: requestedRole }).eq('id', notification.related_id);
+                        if (!error) {
+                          // Mark notification as read
+                          await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id);
+                          // Notify user
+                          await supabase.from('notifications').insert([
+                            {
+                              title: 'Role Change Approved',
+                              message: `Your role has been changed to ${requestedRole}.`,
+                              user_id: notification.related_id,
+                              type: 'success',
+                            }
+                          ]);
+                          toast.success('Role updated and user notified.');
+                          fetchNotifications();
+                        } else {
+                          toast.error('Failed to update role.');
+                        }
+                      }}>
+                        Approve
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={async () => {
+                        // Mark notification as read
+                        await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id);
+                        // Notify user
+                        await supabase.from('notifications').insert([
+                          {
+                            title: 'Role Change Rejected',
+                            message: 'Your role change request was rejected by the admin.',
+                            user_id: notification.related_id,
+                            type: 'error',
+                          }
+                        ]);
+                        toast.success('User notified of rejection.');
+                        fetchNotifications();
+                      }}>
+                        Reject
+                      </Button>
+                    </div>
                   )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700">{notification.message}</p>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-12">

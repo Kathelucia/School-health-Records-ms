@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,9 +7,11 @@ import { toast } from 'sonner';
 
 interface DashboardHomeProps {
   userRole: string;
+  onTabChange: (tab: string) => void;
 }
 
-const DashboardHome = ({ userRole }: DashboardHomeProps) => {
+const DashboardHome = ({ userRole, onTabChange }: DashboardHomeProps) => {
+  console.log('DashboardHome rendered. userRole:', userRole);
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeStudents: 0,
@@ -24,8 +25,9 @@ const DashboardHome = ({ userRole }: DashboardHomeProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('userRole changed or DashboardHome mounted:', userRole);
     fetchDashboardData();
-  }, []);
+  }, [userRole]);
 
   const fetchDashboardData = async () => {
     try {
@@ -122,6 +124,31 @@ const DashboardHome = ({ userRole }: DashboardHomeProps) => {
     }
   };
 
+  // Debug: Refresh Profile button handler
+  const handleDebugRefreshProfile = async () => {
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No user found in session.');
+        return;
+      }
+      // Fetch profile from Supabase
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (error) {
+        console.error('Error fetching profile:', error);
+      } else {
+        console.log('Debug: Current profile from Supabase:', profile);
+      }
+    } catch (err) {
+      console.error('Debug: Error in handleDebugRefreshProfile:', err);
+    }
+  };
+
   const getDashboardCards = () => {
     const baseCards = [
       {
@@ -190,6 +217,12 @@ const DashboardHome = ({ userRole }: DashboardHomeProps) => {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Debug: Refresh Profile Button */}
+      <div className="mb-4">
+        <Button onClick={handleDebugRefreshProfile} variant="destructive">
+          Debug: Refresh Profile
+        </Button>
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -301,19 +334,19 @@ const DashboardHome = ({ userRole }: DashboardHomeProps) => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-16 flex flex-col items-center justify-center">
+            <Button variant="outline" className="h-16 flex flex-col items-center justify-center" onClick={() => onTabChange('students')}>
               <Users className="w-5 h-5 mb-1" />
               <span className="text-xs">View Students</span>
             </Button>
-            <Button variant="outline" className="h-16 flex flex-col items-center justify-center">
+            <Button variant="outline" className="h-16 flex flex-col items-center justify-center" onClick={() => onTabChange('clinic')}>
               <Stethoscope className="w-5 h-5 mb-1" />
               <span className="text-xs">New Visit</span>
             </Button>
-            <Button variant="outline" className="h-16 flex flex-col items-center justify-center">
+            <Button variant="outline" className="h-16 flex flex-col items-center justify-center" onClick={() => onTabChange('immunizations')}>
               <Syringe className="w-5 h-5 mb-1" />
               <span className="text-xs">Immunizations</span>
             </Button>
-            <Button variant="outline" className="h-16 flex flex-col items-center justify-center">
+            <Button variant="outline" className="h-16 flex flex-col items-center justify-center" onClick={() => onTabChange('medication')}>
               <Pill className="w-5 h-5 mb-1" />
               <span className="text-xs">Medications</span>
             </Button>

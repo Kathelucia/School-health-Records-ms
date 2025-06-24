@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { User, Settings as SettingsIcon, Shield, Bell } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface SettingsProps {
   userProfile: any;
@@ -20,9 +20,18 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
     phone_number: '',
     employee_id: '',
     department: '',
-    role: ''
+    role: '',
+    requestedRole: ''
   });
   const [loading, setLoading] = useState(false);
+
+  const roleOptions = [
+    { value: 'admin', label: 'System Administrator' },
+    { value: 'nurse', label: 'School Nurse' },
+    { value: 'clinical_officer', label: 'Clinical Officer' },
+    { value: 'it_support', label: 'IT Support' },
+    { value: 'other_staff', label: 'Staff Member' },
+  ];
 
   useEffect(() => {
     if (userProfile) {
@@ -33,7 +42,8 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
         phone_number: userProfile.phone_number || '',
         employee_id: userProfile.employee_id || '',
         department: userProfile.department || '',
-        role: userProfile.role || 'other_staff'
+        role: userProfile.role || 'other_staff',
+        requestedRole: ''
       });
     }
   }, [userProfile]);
@@ -58,7 +68,8 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
           phone_number: formData.phone_number.trim() || null,
           employee_id: formData.employee_id.trim() || null,
           department: formData.department.trim() || null,
-          updated_at: new Date().toISOString()
+          role: formData.role,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', userProfile.id)
         .select()
@@ -191,11 +202,32 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
                     <Label htmlFor="role">Role</Label>
                     <Input
                       id="role"
-                      value={getRoleDisplayName(formData.role)}
+                      value={getRoleDisplayName('admin')}
                       disabled
                       className="bg-gray-100"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Contact admin to change role</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      You are a System Administrator. Role changes are not allowed.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="requestedRole">Request Role Change</Label>
+                    <Select onValueChange={value => setFormData(prev => ({ ...prev, requestedRole: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select new role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roleOptions.filter(opt => opt.value !== formData.role && opt.value !== 'admin').map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Request a change to your role. This will be reviewed by an administrator.
+                    </p>
                   </div>
                 </div>
 

@@ -14,9 +14,10 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { Label } from '@/components/ui/label';
 
 interface MedicationInventoryProps {
-  userRole: 'nurse' | 'admin';
+  userRole: 'nurse' | 'admin' | 'clinical_officer' | 'it_support' | 'other_staff';
 }
 
 const MedicationInventory = ({ userRole }: MedicationInventoryProps) => {
@@ -122,6 +123,22 @@ const MedicationInventory = ({ userRole }: MedicationInventoryProps) => {
       }
     };
     fetchMedications();
+
+    // --- Real-time subscription ---
+    const channel = supabase.channel('medications-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'medications' },
+        payload => {
+          // Refetch all medications on any change
+          fetchMedications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -352,12 +369,48 @@ const MedicationInventory = ({ userRole }: MedicationInventoryProps) => {
             <DialogTitle>Edit Medication</DialogTitle>
           </DialogHeader>
           {selectedMedication && (
-            <form className="space-y-4" onSubmit={e => { e.preventDefault(); setEditModalOpen(false); }}>
-              <Input label="Name" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
-              <Input label="Category" value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })} />
-              <Input label="Location" value={editForm.location} onChange={e => setEditForm({ ...editForm, location: e.target.value })} />
-              <Input label="Expiry Date" type="date" value={editForm.expiryDate} onChange={e => setEditForm({ ...editForm, expiryDate: e.target.value })} />
-              <Input label="Minimum Stock" type="number" value={editForm.minimumStock} onChange={e => setEditForm({ ...editForm, minimumStock: Number(e.target.value) })} />
+            <form className="space-y-4" onSubmit={async e => {
+              e.preventDefault();
+              // Update medication in Supabase
+              const { data, error } = await supabase.from('medications').update({
+                name: editForm.name,
+                category: editForm.category,
+                location: editForm.location,
+                expiry_date: editForm.expiryDate,
+                minimum_stock_level: editForm.minimumStock,
+              }).eq('id', selectedMedication.id).select().single();
+              if (!error && data) {
+                setMedicationsState(prev => prev.map(m => m.id === data.id ? {
+                  ...m,
+                  name: data.name,
+                  category: data.category,
+                  location: data.location,
+                  expiryDate: data.expiry_date,
+                  minimumStock: data.minimum_stock_level,
+                } : m));
+              }
+              setEditModalOpen(false);
+            }}>
+              <div>
+                <Label>Name</Label>
+                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+              </div>
+              <div>
+                <Label>Category</Label>
+                <Input value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })} />
+              </div>
+              <div>
+                <Label>Location</Label>
+                <Input value={editForm.location} onChange={e => setEditForm({ ...editForm, location: e.target.value })} />
+              </div>
+              <div>
+                <Label>Expiry Date</Label>
+                <Input type="date" value={editForm.expiryDate} onChange={e => setEditForm({ ...editForm, expiryDate: e.target.value })} />
+              </div>
+              <div>
+                <Label>Minimum Stock</Label>
+                <Input type="number" value={editForm.minimumStock} onChange={e => setEditForm({ ...editForm, minimumStock: Number(e.target.value) })} />
+              </div>
               <Button type="submit">Save Changes</Button>
             </form>
           )}
@@ -371,8 +424,27 @@ const MedicationInventory = ({ userRole }: MedicationInventoryProps) => {
             <DialogTitle>Restock Medication</DialogTitle>
           </DialogHeader>
           {selectedMedication && (
-            <form className="space-y-4" onSubmit={e => { e.preventDefault(); setRestockModalOpen(false); }}>
-              <Input label="Amount to Add" type="number" value={restockAmount} onChange={e => setRestockAmount(Number(e.target.value))} />
+            <form className="space-y-4" onSubmit={async e => {
+              e.preventDefault();
+              // Update stock in Supabase
+              const newStock = (selectedMedication.currentStock || 0) + restockAmount;
+              const { data, error } = await supabase.from('medications').update({
+                quantity_in_stock: newStock,
+                updated_at: new Date().toISOString(),
+              }).eq('id', selectedMedication.id).select().single();
+              if (!error && data) {
+                setMedicationsState(prev => prev.map(m => m.id === data.id ? {
+                  ...m,
+                  currentStock: data.quantity_in_stock,
+                  lastRestocked: data.updated_at,
+                } : m));
+              }
+              setRestockModalOpen(false);
+            }}>
+              <div>
+                <Label>Amount to Add</Label>
+                <Input type="number" value={restockAmount} onChange={e => setRestockAmount(Number(e.target.value))} />
+              </div>
               <Button type="submit">Add Stock</Button>
             </form>
           )}
