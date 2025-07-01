@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,6 @@ interface DashboardHomeProps {
 }
 
 const DashboardHome = ({ userRole, onTabChange }: DashboardHomeProps) => {
-  console.log('DashboardHome rendered. userRole:', userRole);
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeStudents: 0,
@@ -25,7 +25,6 @@ const DashboardHome = ({ userRole, onTabChange }: DashboardHomeProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('userRole changed or DashboardHome mounted:', userRole);
     fetchDashboardData();
   }, [userRole]);
 
@@ -33,7 +32,6 @@ const DashboardHome = ({ userRole, onTabChange }: DashboardHomeProps) => {
     try {
       setLoading(true);
       
-      // Fetch basic statistics with error handling
       const [
         studentsResult,
         visitsResult,
@@ -124,33 +122,8 @@ const DashboardHome = ({ userRole, onTabChange }: DashboardHomeProps) => {
     }
   };
 
-  // Debug: Refresh Profile button handler
-  const handleDebugRefreshProfile = async () => {
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('No user found in session.');
-        return;
-      }
-      // Fetch profile from Supabase
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (error) {
-        console.error('Error fetching profile:', error);
-      } else {
-        console.log('Debug: Current profile from Supabase:', profile);
-      }
-    } catch (err) {
-      console.error('Debug: Error in handleDebugRefreshProfile:', err);
-    }
-  };
-
   const getDashboardCards = () => {
-    const baseCards = [
+    return [
       {
         title: 'Total Students',
         value: stats.totalStudents,
@@ -164,40 +137,29 @@ const DashboardHome = ({ userRole, onTabChange }: DashboardHomeProps) => {
         description: `${stats.totalVisits} total visits`,
         icon: Calendar,
         color: 'text-green-600'
-      }
-    ];
-
-    // Add role-specific cards
-    if (['nurse', 'clinical_officer', 'admin'].includes(userRole)) {
-      baseCards.push(
-        {
-          title: 'Clinic Visits',
-          value: stats.totalVisits,
-          description: 'Total clinic visits',
-          icon: Stethoscope,
-          color: 'text-purple-600'
-        },
-        {
-          title: 'Pending Immunizations',
-          value: stats.pendingImmunizations,
-          description: 'Due or overdue',
-          icon: Syringe,
-          color: 'text-orange-600'
-        }
-      );
-    }
-
-    if (['nurse', 'clinical_officer', 'admin'].includes(userRole)) {
-      baseCards.push({
+      },
+      {
+        title: 'Clinic Visits',
+        value: stats.totalVisits,
+        description: 'Total clinic visits',
+        icon: Stethoscope,
+        color: 'text-purple-600'
+      },
+      {
+        title: 'Pending Immunizations',
+        value: stats.pendingImmunizations,
+        description: 'Due or overdue',
+        icon: Syringe,
+        color: 'text-orange-600'
+      },
+      {
         title: 'Low Stock Medications',
         value: stats.lowStockMedications,
         description: 'Need restocking',
         icon: AlertTriangle,
         color: 'text-red-600'
-      });
-    }
-
-    return baseCards;
+      }
+    ];
   };
 
   if (loading) {
@@ -217,12 +179,6 @@ const DashboardHome = ({ userRole, onTabChange }: DashboardHomeProps) => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Debug: Refresh Profile Button */}
-      <div className="mb-4">
-        <Button onClick={handleDebugRefreshProfile} variant="destructive">
-          Debug: Refresh Profile
-        </Button>
-      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -256,7 +212,6 @@ const DashboardHome = ({ userRole, onTabChange }: DashboardHomeProps) => {
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Clinic Visits */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -288,7 +243,6 @@ const DashboardHome = ({ userRole, onTabChange }: DashboardHomeProps) => {
           </CardContent>
         </Card>
 
-        {/* Recent Immunizations */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">

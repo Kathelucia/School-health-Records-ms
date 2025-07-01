@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,30 +21,24 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
     phone_number: '',
     employee_id: '',
     department: '',
-    role: '',
-    requestedRole: ''
+    role: ''
   });
   const [loading, setLoading] = useState(false);
 
   const roleOptions = [
-    { value: 'admin', label: 'System Administrator' },
-    { value: 'nurse', label: 'School Nurse' },
-    { value: 'clinical_officer', label: 'Clinical Officer' },
-    { value: 'it_support', label: 'IT Support' },
-    { value: 'other_staff', label: 'Staff Member' },
+    { value: 'admin', label: 'Administrator' },
+    { value: 'nurse', label: 'School Nurse' }
   ];
 
   useEffect(() => {
     if (userProfile) {
-      console.log('Loading profile data:', userProfile);
       setFormData({
         full_name: userProfile.full_name || '',
         email: userProfile.email || '',
         phone_number: userProfile.phone_number || '',
         employee_id: userProfile.employee_id || '',
         department: userProfile.department || '',
-        role: userProfile.role || 'other_staff',
-        requestedRole: ''
+        role: userProfile.role || 'nurse'
       });
     }
   }, [userProfile]);
@@ -59,8 +54,6 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
     setLoading(true);
 
     try {
-      console.log('Updating profile for user:', userProfile.id);
-
       const { data, error } = await supabase
         .from('profiles')
         .update({
@@ -76,11 +69,9 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
         .single();
 
       if (error) {
-        console.error('Profile update error:', error);
         throw error;
       }
 
-      console.log('Profile updated successfully:', data);
       onProfileUpdate(data);
       toast.success('Profile updated successfully');
     } catch (error: any) {
@@ -101,10 +92,7 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
   const getRoleDisplayName = (role: string) => {
     switch (role) {
       case 'nurse': return 'School Nurse';
-      case 'clinical_officer': return 'Clinical Officer';
-      case 'it_support': return 'IT Support';
-      case 'admin': return 'System Administrator';
-      case 'other_staff': return 'Staff Member';
+      case 'admin': return 'Administrator';
       default: return 'User';
     }
   };
@@ -200,34 +188,16 @@ const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
                   </div>
                   <div>
                     <Label htmlFor="role">Role</Label>
-                    <Input
-                      id="role"
-                      value={getRoleDisplayName('admin')}
-                      disabled
-                      className="bg-gray-100"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      You are a System Administrator. Role changes are not allowed.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="requestedRole">Request Role Change</Label>
-                    <Select onValueChange={value => setFormData(prev => ({ ...prev, requestedRole: value }))}>
+                    <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select new role" />
+                        <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent>
-                        {roleOptions.filter(opt => opt.value !== formData.role && opt.value !== 'admin').map(opt => (
+                        {roleOptions.map(opt => (
                           <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Request a change to your role. This will be reviewed by an administrator.
-                    </p>
                   </div>
                 </div>
 

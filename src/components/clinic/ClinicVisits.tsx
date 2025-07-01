@@ -15,8 +15,7 @@ import {
   Heart,
   Scale,
   AlertTriangle,
-  Edit,
-  Eye
+  Edit
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -72,7 +71,6 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
       const allVisits = data || [];
       setVisits(allVisits);
 
-      // Filter today's visits
       const today = new Date().toISOString().split('T')[0];
       const todayVisitsData = allVisits.filter((visit: any) => 
         visit.visit_date?.startsWith(today)
@@ -126,8 +124,8 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
     setEditingVisit(null);
   };
 
-  // Check if user has permission to manage visits
-  const canManageVisits = ['nurse', 'clinical_officer', 'admin'].includes(userRole);
+  // Both admin and nurse can manage visits
+  const canManageVisits = ['admin', 'nurse'].includes(userRole);
 
   const VisitCard = ({ visit, showEdit = true }: { visit: any, showEdit?: boolean }) => (
     <Card key={visit.id} className="hover:shadow-md transition-shadow">
@@ -184,7 +182,6 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
             </div>
           )}
 
-          {/* Vital Signs */}
           <div className="flex flex-wrap gap-4 text-sm">
             {visit.temperature && (
               <div className="flex items-center">
@@ -270,7 +267,6 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
         </TabsContent>
 
         <TabsContent value="all" className="space-y-4">
-          {/* Search */}
           <Card>
             <CardContent className="pt-6">
               <div className="relative">
@@ -307,7 +303,6 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
         </TabsContent>
       </Tabs>
 
-      {/* Visit Form Modal */}
       {showForm && (
         <ClinicVisitForm
           visit={editingVisit}

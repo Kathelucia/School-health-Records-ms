@@ -248,7 +248,15 @@ export type Database = {
           updated_at?: string | null
           vaccine_name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_student"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       medication_dispensing: {
         Row: {
@@ -586,10 +594,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: Database["public"]["Enums"]["user_role"]
-      }
       get_user_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
@@ -598,12 +602,7 @@ export type Database = {
     Enums: {
       education_level: "form_1" | "form_2" | "form_3" | "form_4"
       school_term: "term_1" | "term_2" | "term_3"
-      user_role:
-        | "nurse"
-        | "clinical_officer"
-        | "it_support"
-        | "admin"
-        | "other_staff"
+      user_role: "admin" | "nurse"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -721,13 +720,7 @@ export const Constants = {
     Enums: {
       education_level: ["form_1", "form_2", "form_3", "form_4"],
       school_term: ["term_1", "term_2", "term_3"],
-      user_role: [
-        "nurse",
-        "clinical_officer",
-        "it_support",
-        "admin",
-        "other_staff",
-      ],
+      user_role: ["admin", "nurse"],
     },
   },
 } as const

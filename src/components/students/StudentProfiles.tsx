@@ -28,13 +28,12 @@ const StudentProfiles = ({ userRole }: StudentProfilesProps) => {
 
   const fetchStudents = async () => {
     try {
-      // Optimize query - only fetch essential fields for listing
       const { data, error } = await supabase
         .from('students')
         .select('id,full_name,student_id,admission_number,form_level,stream,gender,date_of_birth,county,sub_county,chronic_conditions,allergies')
         .eq('is_active', true)
         .order('full_name')
-        .limit(100); // Add pagination limit
+        .limit(100);
 
       if (error) throw error;
       setStudents(data || []);
@@ -46,7 +45,6 @@ const StudentProfiles = ({ userRole }: StudentProfilesProps) => {
     }
   };
 
-  // Memoize filtered students to prevent unnecessary recalculations
   const filteredStudents = useMemo(() => {
     if (!searchTerm) return students;
     
@@ -81,7 +79,8 @@ const StudentProfiles = ({ userRole }: StudentProfilesProps) => {
     setEditingStudent(null);
   };
 
-  const canManageStudents = ['nurse', 'clinical_officer', 'admin'].includes(userRole);
+  // Both admin and nurse can manage students
+  const canManageStudents = ['admin', 'nurse'].includes(userRole);
 
   if (selectedStudent) {
     return (

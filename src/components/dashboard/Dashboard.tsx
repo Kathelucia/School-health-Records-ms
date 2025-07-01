@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
@@ -11,7 +12,7 @@ import NotificationCenter from '@/components/notifications/NotificationCenter';
 import Settings from '@/components/settings/Settings';
 import BulkUpload from '@/components/database/BulkUpload';
 import ReportDownloader from '@/components/reports/ReportDownloader';
-import ContactAdmin from '@/components/settings/ContactAdmin';
+import StaffManagement from '@/components/settings/StaffManagement';
 
 interface DashboardProps {
   userProfile: any;
@@ -70,8 +71,8 @@ const Dashboard = ({ userProfile, onLogout }: DashboardProps) => {
         return <NotificationCenter userRole={userProfile.role} />;
       case 'settings':
         return <Settings userProfile={userProfile} onProfileUpdate={() => {}} />;
-      case 'contact-admin':
-        return <ContactAdmin userProfile={userProfile} />;
+      case 'staff-management':
+        return <StaffManagement />;
       default:
         return <DashboardHome userRole={userProfile.role} onTabChange={handleTabChange} />;
     }

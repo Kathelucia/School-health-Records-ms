@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,11 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const roleOptions = [
-  { value: 'admin', label: 'System Administrator' },
-  { value: 'nurse', label: 'School Nurse' },
-  { value: 'clinical_officer', label: 'Clinical Officer' },
-  { value: 'it_support', label: 'IT Support' },
-  { value: 'other_staff', label: 'Staff Member' },
+  { value: 'admin', label: 'Administrator' },
+  { value: 'nurse', label: 'School Nurse' }
 ];
 
 export default function StaffManagement() {
