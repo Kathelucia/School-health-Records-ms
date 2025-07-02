@@ -1,14 +1,11 @@
+
 import { useState } from 'react';
-import Papa from 'papaparse';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Upload, FileText, CheckCircle, XCircle, AlertTriangle, FileSpreadsheet } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import FileUploadSection from './FileUploadSection';
+import UploadResults from './UploadResults';
+import FormatRequirements from './FormatRequirements';
+import { parseCSV, processStudentUpload, downloadCSVTemplate } from '@/utils/csvUploadUtils';
 
 interface BulkUploadProps {
   userRole: string;
@@ -25,47 +22,9 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
     errors: string[];
   } | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      const fileExtension = selectedFile.name.toLowerCase();
-      if (!fileExtension.endsWith('.csv')) {
-        toast.error('Please select a CSV file (.csv)');
-        return;
-      }
-      setFile(selectedFile);
-      setResults(null);
-    }
-  };
-
-  const parseCSV = (file: File): Promise<any[]> => {
-    return new Promise((resolve, reject) => {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          resolve(results.data as any[]);
-        },
-        error: (error) => {
-          reject(error);
-        }
-      });
-    });
-  };
-
-  const validateStudentData = (student: any): string[] => {
-    const errors = [];
-    if (!student.full_name) errors.push('Full name is required');
-    if (student.student_id && !/^[A-Za-z0-9]+$/.test(student.student_id)) {
-      errors.push('Student ID must contain only letters and numbers');
-    }
-    if (student.admission_number && !/^[0-9]+$/.test(student.admission_number)) {
-      errors.push('Admission number must contain only numbers');
-    }
-    if (student.email && !/\S+@\S+\.\S+/.test(student.email)) {
-      errors.push('Invalid email format');
-    }
-    return errors;
+  const handleFileChange = (selectedFile: File | null) => {
+    setFile(selectedFile);
+    setResults(null);
   };
 
   const handleUpload = async () => {
@@ -79,70 +38,15 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
 
     try {
       const students = await parseCSV(file);
+      const uploadResults = await processStudentUpload(students, setProgress);
+      
+      setResults(uploadResults);
 
-      let successCount = 0;
-      let failedCount = 0;
-      const errors: string[] = [];
-
-      for (let i = 0; i < students.length; i++) {
-        const student = students[i];
-        setProgress(((i + 1) / students.length) * 100);
-
-        // Validate data
-        const validationErrors = validateStudentData(student);
-        if (validationErrors.length > 0) {
-          failedCount++;
-          errors.push(`Row ${i + 2}: ${validationErrors.join(', ')}`);
-          continue;
-        }
-
-        try {
-          // Prepare student data
-          const studentData = {
-            full_name: student.full_name,
-            student_id: student.student_id || null,
-            admission_number: student.admission_number || null,
-            date_of_birth: student.date_of_birth || null,
-            gender: student.gender || null,
-            form_level: student.form_level || null,
-            stream: student.stream || null,
-            blood_group: student.blood_group || null,
-            allergies: student.allergies || null,
-            chronic_conditions: student.chronic_conditions || null,
-            parent_guardian_name: student.parent_guardian_name || null,
-            parent_guardian_phone: student.parent_guardian_phone || null,
-            county: student.county || null,
-            sub_county: student.sub_county || null,
-            ward: student.ward || null,
-            village: student.village || null,
-            admission_date: student.admission_date || null,
-            is_active: true
-          };
-
-          const { error } = await supabase
-            .from('students')
-            .insert([studentData]);
-
-          if (error) throw error;
-          successCount++;
-        } catch (error: any) {
-          failedCount++;
-          errors.push(`Row ${i + 2}: ${error.message}`);
-        }
+      if (uploadResults.success > 0) {
+        toast.success(`Successfully uploaded ${uploadResults.success} students`);
       }
-
-      setResults({
-        total: students.length,
-        success: successCount,
-        failed: failedCount,
-        errors
-      });
-
-      if (successCount > 0) {
-        toast.success(`Successfully uploaded ${successCount} students`);
-      }
-      if (failedCount > 0) {
-        toast.error(`Failed to upload ${failedCount} students`);
+      if (uploadResults.failed > 0) {
+        toast.error(`Failed to upload ${uploadResults.failed} students`);
       }
 
     } catch (error: any) {
@@ -151,33 +55,6 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
     } finally {
       setUploading(false);
     }
-  };
-
-  const downloadTemplate = () => {
-    const headers = [
-      'full_name', 'student_id', 'admission_number', 'date_of_birth', 'gender',
-      'form_level', 'stream', 'blood_group', 'allergies', 'chronic_conditions',
-      'parent_guardian_name', 'parent_guardian_phone', 'county', 'sub_county',
-      'ward', 'village', 'admission_date'
-    ];
-
-    const sampleData = [
-      'John Doe', 'STU001', '2024001', '2010-01-15', 'male',
-      'form_1', 'East', 'O+', '', 'None',
-      'Jane Doe', '+254712345678', 'Nairobi', 'Westlands',
-      'Parklands', 'Parklands Estate', '2024-01-15'
-    ];
-
-    const template = [headers.join(','), sampleData.join(',')].join('\n');
-    const blob = new Blob([template], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'student_upload_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
-
-    toast.success(`CSV template downloaded successfully`);
   };
 
   if (userRole !== 'admin') {
@@ -200,147 +77,19 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <FileSpreadsheet className="w-5 h-5 mr-2" />
-              Upload Students File
-            </CardTitle>
-            <CardDescription>
-              Upload a CSV file (.csv) containing student information
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="file-upload">Select File</Label>
-              <Input
-                id="file-upload"
-                type="file"
-                accept=".csv"
-                onChange={handleFileChange}
-                disabled={uploading}
-              />
-            </div>
+        <FileUploadSection
+          file={file}
+          uploading={uploading}
+          progress={progress}
+          onFileChange={handleFileChange}
+          onUpload={handleUpload}
+          onDownloadTemplate={downloadCSVTemplate}
+        />
 
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                Make sure your file follows the required format. Download a template below for reference.
-              </AlertDescription>
-            </Alert>
-
-            <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={downloadTemplate}
-                variant="outline"
-                className="flex items-center"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                Download CSV Template
-              </Button>
-              <Button
-                onClick={handleUpload}
-                disabled={!file || uploading}
-                className="flex items-center"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                {uploading ? 'Uploading...' : 'Upload Students'}
-              </Button>
-            </div>
-
-            {uploading && (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Upload Progress</span>
-                  <span>{Math.round(progress)}%</span>
-                </div>
-                <Progress value={progress} className="w-full" />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {results && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                {results.failed === 0 ? (
-                  <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
-                ) : (
-                  <XCircle className="w-5 h-5 mr-2 text-red-600" />
-                )}
-                Upload Results
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-blue-600">{results.total}</div>
-                  <div className="text-sm text-gray-600">Total Records</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-green-600">{results.success}</div>
-                  <div className="text-sm text-gray-600">Successful</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-red-600">{results.failed}</div>
-                  <div className="text-sm text-gray-600">Failed</div>
-                </div>
-              </div>
-
-              {results.errors.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-red-600">Errors:</h4>
-                  <div className="max-h-40 overflow-y-auto space-y-1">
-                    {results.errors.slice(0, 10).map((error, index) => (
-                      <div key={index} className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                        {error}
-                      </div>
-                    ))}
-                    {results.errors.length > 10 && (
-                      <div className="text-sm text-gray-600">
-                        ... and {results.errors.length - 10} more errors
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        {results && <UploadResults results={results} />}
       </div>
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>File Format Requirements</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-medium mb-2">Supported File Types:</h4>
-              <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
-                <li><strong>CSV Files</strong> - Comma-separated values (.csv)</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium mb-2">Required Columns:</h4>
-              <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
-                <li><strong>full_name</strong> - Student's full name (required)</li>
-                <li><strong>student_id</strong> - Letters and numbers only (e.g., STU001)</li>
-                <li><strong>admission_number</strong> - Numbers only (e.g., 2024001)</li>
-                <li><strong>date_of_birth</strong> - Format: YYYY-MM-DD</li>
-                <li><strong>gender</strong> - male, female, or other</li>
-                <li><strong>form_level</strong> - form_1, form_2, form_3, or form_4</li>
-                <li><strong>stream</strong> - Class stream (e.g., East, West)</li>
-                <li><strong>blood_group</strong> - A+, A-, B+, B-, AB+, AB-, O+, O-</li>
-                <li><strong>parent_guardian_name</strong> - Parent/guardian name</li>
-                <li><strong>parent_guardian_phone</strong> - Phone number with country code</li>
-                <li><strong>county</strong> - Kenyan county</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <FormatRequirements />
     </div>
   );
 };
