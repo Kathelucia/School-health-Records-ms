@@ -14,15 +14,17 @@ import StudentSelector from '@/components/students/StudentSelector';
 
 interface ImmunizationFormProps {
   immunization?: any;
+  student?: any;
   onClose: () => void;
   onSave: () => void;
+  requirements?: any[];
 }
 
-const ImmunizationForm = ({ immunization, onClose, onSave }: ImmunizationFormProps) => {
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements = [] }: ImmunizationFormProps) => {
+  const [selectedStudent, setSelectedStudent] = useState<any>(student || null);
   const [showStudentSelector, setShowStudentSelector] = useState(false);
   const [formData, setFormData] = useState({
-    student_id: '',
+    student_id: student?.id || '',
     vaccine_name: '',
     date_administered: new Date().toISOString().split('T')[0],
     batch_number: '',
@@ -36,6 +38,13 @@ const ImmunizationForm = ({ immunization, onClose, onSave }: ImmunizationFormPro
   useEffect(() => {
     fetchUserProfile();
   }, []);
+
+  useEffect(() => {
+    if (student) {
+      setSelectedStudent(student);
+      setFormData(prev => ({ ...prev, student_id: student.id }));
+    }
+  }, [student]);
 
   useEffect(() => {
     if (immunization) {

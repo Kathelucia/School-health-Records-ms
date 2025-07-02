@@ -1,31 +1,31 @@
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { User, Mail, Phone, Building, Settings as SettingsIcon, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Users, Bug } from 'lucide-react';
-import StaffManagement from './StaffManagement';
-import ProfileDebugger from '@/components/debug/ProfileDebugger';
 
 interface SettingsProps {
   userRole: string;
 }
 
 const Settings = ({ userRole }: SettingsProps) => {
-  const [profile, setProfile] = useState({
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
     full_name: '',
     email: '',
     phone_number: '',
-    department: '',
-    employee_id: ''
+    employee_id: '',
+    department: ''
   });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -41,38 +41,42 @@ const Settings = ({ userRole }: SettingsProps) => {
           .eq('id', user.id)
           .single();
 
-        if (!error && data) {
-          setProfile({
-            full_name: data.full_name || '',
-            email: data.email || '',
-            phone_number: data.phone_number || '',
-            department: data.department || '',
-            employee_id: data.employee_id || ''
-          });
-        }
+        if (error) throw error;
+        
+        setProfile(data);
+        setFormData({
+          full_name: data.full_name || '',
+          email: data.email || '',
+          phone_number: data.phone_number || '',
+          employee_id: data.employee_id || '',
+          department: data.department || ''
+        });
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+      toast.error('Error loading profile');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleProfileUpdate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { error } = await supabase
-          .from('profiles')
-          .update(profile)
-          .eq('id', user.id);
+      if (!user) throw new Error('No user found');
 
-        if (error) throw error;
-        toast.success('Profile updated successfully');
-      }
+      const { error } = await supabase
+        .from('profiles')
+        .update(formData)
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      toast.success('Profile updated successfully');
+      fetchProfile(); // Refresh profile data
     } catch (error: any) {
       console.error('Error updating profile:', error);
       toast.error('Error updating profile: ' + error.message);
@@ -80,14 +84,6 @@ const Settings = ({ userRole }: SettingsProps) => {
       setSaving(false);
     }
   };
-
-  const departments = [
-    'Health Services',
-    'Administration',
-    'Nursing',
-    'Medical',
-    'Other'
-  ];
 
   if (loading) {
     return (
@@ -101,112 +97,155 @@ const Settings = ({ userRole }: SettingsProps) => {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
-        <p className="text-gray-600">Manage your profile and system settings</p>
+        <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+          <SettingsIcon className="w-6 h-6 mr-2" />
+          Settings
+        </h2>
+        <p className="text-gray-600">Manage your profile and account settings</p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="profile" className="flex items-center">
-            <User className="w-4 h-4 mr-2" />
-            My Profile
-          </TabsTrigger>
-          {userRole === 'admin' && (
-            <TabsTrigger value="staff" className="flex items-center">
-              <Users className="w-4 h-4 mr-2" />
-              Staff Management
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="debug" className="flex items-center">
-            <Bug className="w-4 h-4 mr-2" />
-            Debug Tools
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="profile">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Profile Information */}
+        <div className="lg:col-span-2">
           <Card>
             <CardHeader>
               <CardTitle>Profile Information</CardTitle>
+              <CardDescription>
+                Update your personal information and contact details
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleProfileUpdate} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="full_name">Full Name</Label>
-                    <Input
-                      id="full_name"
-                      value={profile.full_name}
-                      onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="phone_number">Phone Number</Label>
-                    <Input
-                      id="phone_number"
-                      value={profile.phone_number}
-                      onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="employee_id">Employee ID</Label>
-                    <Input
-                      id="employee_id"
-                      value={profile.employee_id}
-                      onChange={(e) => setProfile({ ...profile, employee_id: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <Label htmlFor="department">Department</Label>
-                    <Select value={profile.department} onValueChange={(value) => setProfile({ ...profile, department: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map(dept => (
-                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="full_name">Full Name</Label>
+                  <Input
+                    id="full_name"
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    placeholder="Enter your full name"
+                    required
+                  />
                 </div>
 
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={saving}>
-                    {saving ? 'Saving...' : 'Update Profile'}
-                  </Button>
+                <div>
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="Enter your email"
+                    required
+                  />
                 </div>
+
+                <div>
+                  <Label htmlFor="phone_number">Phone Number</Label>
+                  <Input
+                    id="phone_number"
+                    value={formData.phone_number}
+                    onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                    placeholder="Enter your phone number"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="employee_id">Employee ID</Label>
+                  <Input
+                    id="employee_id"
+                    value={formData.employee_id}
+                    onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                    placeholder="Enter your employee ID"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="department">Department</Label>
+                  <Input
+                    id="department"
+                    value={formData.department}
+                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    placeholder="Enter your department"
+                  />
+                </div>
+
+                <Button type="submit" disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
               </form>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
 
-        {userRole === 'admin' && (
-          <TabsContent value="staff">
-            <StaffManagement />
-          </TabsContent>
-        )}
+        {/* Account Summary */}
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {profile && (
+                <>
+                  <div className="flex items-center space-x-3">
+                    <User className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="font-medium">{profile.full_name}</p>
+                      <p className="text-sm text-gray-600">Full Name</p>
+                    </div>
+                  </div>
 
-        <TabsContent value="debug">
-          <ProfileDebugger />
-        </TabsContent>
-      </Tabs>
+                  <div className="flex items-center space-x-3">
+                    <Shield className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <Badge className={userRole === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}>
+                        {userRole === 'admin' ? 'Administrator' : 'Nurse'}
+                      </Badge>
+                      <p className="text-sm text-gray-600">Role</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <Mail className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="font-medium">{profile.email}</p>
+                      <p className="text-sm text-gray-600">Email</p>
+                    </div>
+                  </div>
+
+                  {profile.phone_number && (
+                    <div className="flex items-center space-x-3">
+                      <Phone className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="font-medium">{profile.phone_number}</p>
+                        <p className="text-sm text-gray-600">Phone</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {profile.department && (
+                    <div className="flex items-center space-x-3">
+                      <Building className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="font-medium">{profile.department}</p>
+                        <p className="text-sm text-gray-600">Department</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  <div className="text-sm text-gray-600">
+                    <p>Account created: {new Date(profile.created_at).toLocaleDateString()}</p>
+                    <p>Last updated: {new Date(profile.updated_at).toLocaleDateString()}</p>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };

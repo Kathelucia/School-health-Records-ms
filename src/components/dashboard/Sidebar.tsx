@@ -33,14 +33,8 @@ const Sidebar = ({ userRole }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
-  // Filter navigation based on user role
-  const filteredNavigation = navigation.filter(item => {
-    // Bulk upload is only for admins
-    if (item.href === '/upload' && userRole !== 'admin') {
-      return false;
-    }
-    return true;
-  });
+  // Filter navigation based on user role - both admin and nurse have same access now
+  const filteredNavigation = navigation;
 
   return (
     <div className={cn(
