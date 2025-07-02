@@ -5,13 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import Auth from './Auth';
 import Dashboard from '@/components/dashboard/Dashboard';
-import DashboardHome from '@/components/dashboard/DashboardHome';
-import StudentProfiles from '@/components/students/StudentProfiles';
-import ClinicVisits from '@/components/clinic/ClinicVisits';
-import ImmunizationManagement from '@/components/immunizations/ImmunizationManagement';
-import MedicationInventorySystem from '@/components/medication/MedicationInventorySystem';
-import BulkUpload from '@/components/database/BulkUpload';
-import Settings from '@/components/settings/Settings';
 
 const Index = () => {
   const [user, setUser] = useState<any>(null);
@@ -66,10 +59,13 @@ const Index = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
+        <div className="text-center animate-fade-in">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse-glow">
+            <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">School Health System</h2>
+          <p className="text-gray-600">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -80,18 +76,9 @@ const Index = () => {
   }
 
   return (
-    <Dashboard userRole={userRole}>
-      <Routes>
-        <Route path="/" element={<DashboardHome userRole={userRole} />} />
-        <Route path="/students" element={<StudentProfiles userRole={userRole} />} />
-        <Route path="/clinic" element={<ClinicVisits userRole={userRole} />} />
-        <Route path="/immunizations" element={<ImmunizationManagement userRole={userRole} />} />
-        <Route path="/medications" element={<MedicationInventorySystem userRole={userRole} />} />
-        <Route path="/upload" element={<BulkUpload userRole={userRole} />} />
-        <Route path="/settings" element={<Settings userRole={userRole} />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Dashboard>
+    <Routes>
+      <Route path="/*" element={<Dashboard userRole={userRole} />} />
+    </Routes>
   );
 };
 
