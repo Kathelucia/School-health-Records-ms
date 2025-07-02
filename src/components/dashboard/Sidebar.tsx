@@ -1,73 +1,106 @@
 
 import { useState } from 'react';
-import {
-  Home,
-  Users,
-  Stethoscope,
-  Syringe,
+import { NavLink, useLocation } from 'react-router-dom';
+import { 
+  Home, 
+  Users, 
+  Stethoscope, 
   Pill,
-  FileText,
+  Shield,
+  Upload,
   Settings,
-  Bell,
-  BarChart3,
-  Upload
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+
+const navigation = [
+  { name: 'Dashboard', href: '/', icon: Home },
+  { name: 'Student Profiles', href: '/students', icon: Users },
+  { name: 'Clinic Visits', href: '/clinic', icon: Stethoscope },
+  { name: 'Immunizations', href: '/immunizations', icon: Shield },
+  { name: 'Medication Inventory', href: '/medications', icon: Pill },
+  { name: 'Bulk Upload', href: '/upload', icon: Upload },
+  { name: 'Settings', href: '/settings', icon: Settings },
+];
 
 interface SidebarProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
   userRole: string;
-  isOpen: boolean;
 }
 
-const Sidebar = ({ activeTab, onTabChange, userRole, isOpen }: SidebarProps) => {
-  const navigationItems = [
-    { id: 'home', label: 'Dashboard', icon: Home, roles: ['admin', 'nurse'] },
-    { id: 'students', label: 'Student Profiles', icon: Users, roles: ['admin', 'nurse'] },
-    { id: 'clinic', label: 'Clinic Visits', icon: Stethoscope, roles: ['admin', 'nurse'] },
-    { id: 'immunizations', label: 'Immunizations', icon: Syringe, roles: ['admin', 'nurse'] },
-    { id: 'medication', label: 'Medication', icon: Pill, roles: ['admin', 'nurse'] },
-    { id: 'reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'nurse'] },
-    { id: 'bulk-upload', label: 'Bulk Upload', icon: Upload, roles: ['admin'] },
-    { id: 'audit', label: 'Audit Logs', icon: FileText, roles: ['admin'] },
-    { id: 'notifications', label: 'Notifications', icon: Bell, roles: ['admin', 'nurse'] },
-    { id: 'settings', label: 'Settings', icon: Settings, roles: ['admin', 'nurse'] },
-  ];
+const Sidebar = ({ userRole }: SidebarProps) => {
+  const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
 
-  if (!isOpen) {
-    return null;
-  }
-
-  // Ensure userRole has a fallback
-  const currentUserRole = userRole || 'nurse';
+  // Filter navigation based on user role
+  const filteredNavigation = navigation.filter(item => {
+    // Bulk upload is only for admins
+    if (item.href === '/upload' && userRole !== 'admin') {
+      return false;
+    }
+    return true;
+  });
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 border-r py-4 w-60">
-      <div className="px-6 py-2">
-        <h1 className="text-lg font-semibold">School Health Center</h1>
+    <div className={cn(
+      "bg-white border-r border-gray-200 flex flex-col transition-all duration-300",
+      collapsed ? "w-16" : "w-64"
+    )}>
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        {!collapsed && (
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Health System</h1>
+            <p className="text-sm text-gray-600">School Management</p>
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setCollapsed(!collapsed)}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </Button>
       </div>
-      <nav className="flex-1">
-        <ul>
-          {navigationItems.map((item) => {
-            if (!item.roles.includes(currentUserRole)) {
-              return null;
-            }
-            return (
-              <li key={item.id} className="mb-1">
-                <Button
-                  variant="ghost"
-                  className={`w-full justify-start font-normal px-6 py-2 ${activeTab === item.id ? 'bg-gray-100' : ''}`}
-                  onClick={() => onTabChange(item.id)}
-                >
-                  <item.icon className="w-4 h-4 mr-2" />
-                  {item.label}
-                </Button>
-              </li>
-            );
-          })}
-        </ul>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-2">
+        {filteredNavigation.map((item) => {
+          const isActive = location.pathname === item.href || 
+                          (item.href !== '/' && location.pathname.startsWith(item.href));
+          
+          return (
+            <NavLink
+              key={item.name}
+              to={item.href}
+              className={cn(
+                "flex items-center px-3 py-2 rounded-lg transition-colors",
+                isActive
+                  ? "bg-blue-100 text-blue-700 border border-blue-200"
+                  : "text-gray-700 hover:bg-gray-100",
+                collapsed && "justify-center"
+              )}
+            >
+              <item.icon className={cn("w-5 h-5", !collapsed && "mr-3")} />
+              {!collapsed && <span className="text-sm font-medium">{item.name}</span>}
+            </NavLink>
+          );
+        })}
       </nav>
+
+      {/* Role Badge */}
+      {!collapsed && (
+        <div className="p-4 border-t border-gray-200">
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Current Role</p>
+            <p className="text-sm font-medium text-gray-900 capitalize">
+              {userRole === 'admin' ? 'School Administrator' : 'School Nurse'}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

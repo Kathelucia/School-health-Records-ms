@@ -1,238 +1,247 @@
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Users, Stethoscope, Syringe, Pill, TrendingUp, Calendar, AlertTriangle, Heart } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Users, 
+  Stethoscope, 
+  Pill, 
+  Calendar,
+  AlertTriangle,
+  TrendingUp,
+  Activity
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import ProfileDebugger from '@/components/debug/ProfileDebugger';
 
 interface DashboardHomeProps {
   userRole: string;
-  onTabChange: (tab: string) => void;
 }
 
-const DashboardHome = ({ userRole, onTabChange }: DashboardHomeProps) => {
+const DashboardHome = ({ userRole }: DashboardHomeProps) => {
   const [stats, setStats] = useState({
     totalStudents: 0,
-    activeStudents: 0,
     todayVisits: 0,
-    totalVisits: 0,
-    pendingImmunizations: 0,
     lowStockMedications: 0,
-    recentVisits: [] as any[],
-    recentImmunizations: [] as any[]
+    expiringMedications: 0,
+    recentVisits: [],
+    urgentAlerts: []
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [userRole]);
+  }, []);
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true);
-      
-      const [
-        studentsResult,
-        visitsResult,
-        todayVisitsResult,
-        immunizationsResult,
-        medicationsResult,
-        recentVisitsResult,
-        recentImmunizationsResult
-      ] = await Promise.allSettled([
-        supabase.from('students').select('id, is_active', { count: 'exact' }),
-        supabase.from('clinic_visits').select('id', { count: 'exact' }),
-        supabase.from('clinic_visits').select('id', { count: 'exact' }).gte('visit_date', new Date().toISOString().split('T')[0]),
-        supabase.from('immunizations').select('id, next_dose_date', { count: 'exact' }),
-        supabase.from('medications').select('id, quantity_in_stock, minimum_stock_level', { count: 'exact' }),
-        supabase.from('clinic_visits').select(`
-          id, visit_date, visit_type, diagnosis,
+      // Fetch total students
+      const { data: studentsCount } = await supabase
+        .from('students')
+        .select('id', { count: 'exact' })
+        .eq('is_active', true);
+
+      // Fetch today's visits
+      const today = new Date().toISOString().split('T')[0];
+      const { data: todayVisitsData } = await supabase
+        .from('clinic_visits')
+        .select('id', { count: 'exact' })
+        .gte('visit_date', today);
+
+      // Fetch recent visits
+      const { data: recentVisitsData } = await supabase
+        .from('clinic_visits')
+        .select(`
+          id,
+          visit_date,
+          visit_type,
+          diagnosis,
           students(full_name, student_id)
-        `).order('visit_date', { ascending: false }).limit(5),
-        supabase.from('immunizations').select(`
-          id, vaccine_name, date_administered,
-          students(full_name, student_id)
-        `).order('date_administered', { ascending: false }).limit(5)
-      ]);
+        `)
+        .order('visit_date', { ascending: false })
+        .limit(5);
 
-      // Process students data
-      let totalStudents = 0;
-      let activeStudents = 0;
-      if (studentsResult.status === 'fulfilled' && studentsResult.value.data) {
-        totalStudents = studentsResult.value.count || 0;
-        activeStudents = studentsResult.value.data.filter(s => s.is_active).length;
-      }
+      // Fetch medication alerts
+      const { data: medications } = await supabase
+        .from('medications')
+        .select('*');
 
-      // Process visits data
-      let totalVisits = 0;
-      let todayVisits = 0;
-      if (visitsResult.status === 'fulfilled') {
-        totalVisits = visitsResult.value.count || 0;
-      }
-      if (todayVisitsResult.status === 'fulfilled') {
-        todayVisits = todayVisitsResult.value.count || 0;
-      }
+      let lowStockCount = 0;
+      let expiringCount = 0;
+      const urgentAlerts: any[] = [];
 
-      // Process immunizations data
-      let pendingImmunizations = 0;
-      if (immunizationsResult.status === 'fulfilled' && immunizationsResult.value.data) {
-        const today = new Date().toISOString().split('T')[0];
-        pendingImmunizations = immunizationsResult.value.data.filter(
-          i => i.next_dose_date && i.next_dose_date <= today
-        ).length;
-      }
+      medications?.forEach((med: any) => {
+        // Check low stock
+        if (med.quantity_in_stock <= med.minimum_stock_level) {
+          lowStockCount++;
+          if (med.quantity_in_stock === 0) {
+            urgentAlerts.push({
+              type: 'out_of_stock',
+              message: `${med.name} is out of stock`,
+              severity: 'high'
+            });
+          }
+        }
 
-      // Process medications data
-      let lowStockMedications = 0;
-      if (medicationsResult.status === 'fulfilled' && medicationsResult.value.data) {
-        lowStockMedications = medicationsResult.value.data.filter(
-          m => m.quantity_in_stock <= m.minimum_stock_level
-        ).length;
-      }
-
-      // Process recent visits
-      let recentVisits: any[] = [];
-      if (recentVisitsResult.status === 'fulfilled' && recentVisitsResult.value.data) {
-        recentVisits = recentVisitsResult.value.data;
-      }
-
-      // Process recent immunizations
-      let recentImmunizations: any[] = [];
-      if (recentImmunizationsResult.status === 'fulfilled' && recentImmunizationsResult.value.data) {
-        recentImmunizations = recentImmunizationsResult.value.data;
-      }
+        // Check expiring medications
+        if (med.expiry_date) {
+          const today = new Date();
+          const expiry = new Date(med.expiry_date);
+          const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (daysUntilExpiry <= 30 && daysUntilExpiry >= 0) {
+            expiringCount++;
+            if (daysUntilExpiry <= 7) {
+              urgentAlerts.push({
+                type: 'expiring_soon',
+                message: `${med.name} expires in ${daysUntilExpiry} days`,
+                severity: daysUntilExpiry <= 3 ? 'high' : 'medium'
+              });
+            }
+          } else if (daysUntilExpiry < 0) {
+            urgentAlerts.push({
+              type: 'expired',
+              message: `${med.name} has expired`,
+              severity: 'high'
+            });
+          }
+        }
+      });
 
       setStats({
-        totalStudents,
-        activeStudents,
-        todayVisits,
-        totalVisits,
-        pendingImmunizations,
-        lowStockMedications,
-        recentVisits,
-        recentImmunizations
+        totalStudents: studentsCount?.length || 0,
+        todayVisits: todayVisitsData?.length || 0,
+        lowStockMedications: lowStockCount,
+        expiringMedications: expiringCount,
+        recentVisits: recentVisitsData || [],
+        urgentAlerts: urgentAlerts.slice(0, 5) // Show only top 5 alerts
       });
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      toast.error('Error loading dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
-  const getDashboardCards = () => {
-    return [
-      {
-        title: 'Total Students',
-        value: stats.totalStudents,
-        description: `${stats.activeStudents} active students`,
-        icon: Users,
-        color: 'text-blue-600'
-      },
-      {
-        title: 'Today\'s Visits',
-        value: stats.todayVisits,
-        description: `${stats.totalVisits} total visits`,
-        icon: Calendar,
-        color: 'text-green-600'
-      },
-      {
-        title: 'Clinic Visits',
-        value: stats.totalVisits,
-        description: 'Total clinic visits',
-        icon: Stethoscope,
-        color: 'text-purple-600'
-      },
-      {
-        title: 'Pending Immunizations',
-        value: stats.pendingImmunizations,
-        description: 'Due or overdue',
-        icon: Syringe,
-        color: 'text-orange-600'
-      },
-      {
-        title: 'Low Stock Medications',
-        value: stats.lowStockMedications,
-        description: 'Need restocking',
-        icon: AlertTriangle,
-        color: 'text-red-600'
-      }
-    ];
+  const getVisitTypeColor = (type: string) => {
+    switch (type) {
+      case 'emergency': return 'bg-red-100 text-red-800';
+      case 'injury': return 'bg-orange-100 text-orange-800';
+      case 'sick': return 'bg-yellow-100 text-yellow-800';
+      case 'medication': return 'bg-blue-100 text-blue-800';
+      case 'follow_up': return 'bg-purple-100 text-purple-800';
+      case 'routine': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getAlertColor = (severity: string) => {
+    switch (severity) {
+      case 'high': return 'bg-red-100 text-red-800 border-red-200';
+      case 'medium': return 'bg-orange-100 text-orange-800 border-orange-200';
+      default: return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    }
   };
 
   if (loading) {
     return (
       <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
-            ))}
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="h-24 bg-gray-200 rounded-lg animate-pulse"></div>
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">School Health Records Overview</p>
-        </div>
-        <Button onClick={fetchDashboardData} variant="outline">
-          <TrendingUp className="w-4 h-4 mr-2" />
-          Refresh Data
-        </Button>
+    <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600">School Health Management System Overview</p>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {getDashboardCards().map((card, index) => (
-          <Card key={index}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {card.title}
-              </CardTitle>
-              <card.icon className={`h-4 w-4 ${card.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
-              <p className="text-xs text-muted-foreground">
-                {card.description}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Users className="w-8 h-8 text-blue-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Students</p>
+                <p className="text-2xl font-bold">{stats.totalStudents}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Stethoscope className="w-8 h-8 text-green-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Today's Visits</p>
+                <p className="text-2xl font-bold">{stats.todayVisits}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Pill className="w-8 h-8 text-yellow-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Low Stock Meds</p>
+                <p className="text-2xl font-bold">{stats.lowStockMedications}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Calendar className="w-8 h-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Expiring Meds</p>
+                <p className="text-2xl font-bold">{stats.expiringMedications}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Recent Clinic Visits */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Stethoscope className="w-5 h-5 mr-2 text-purple-600" />
+              <Activity className="w-5 h-5 mr-2" />
               Recent Clinic Visits
             </CardTitle>
-            <CardDescription>
-              Latest student health visits
-            </CardDescription>
           </CardHeader>
           <CardContent>
             {stats.recentVisits.length > 0 ? (
               <div className="space-y-3">
-                {stats.recentVisits.map((visit) => (
-                  <div key={visit.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                {stats.recentVisits.map((visit: any) => (
+                  <div key={visit.id} className="flex items-center justify-between border-b pb-2 last:border-b-0">
                     <div>
-                      <p className="font-medium">{visit.students?.full_name || 'Unknown Student'}</p>
-                      <p className="text-sm text-gray-600">{visit.visit_type} - {visit.diagnosis || 'No diagnosis'}</p>
+                      <p className="font-medium">{visit.students?.full_name}</p>
+                      <p className="text-sm text-gray-600">{visit.students?.student_id}</p>
+                      {visit.diagnosis && (
+                        <p className="text-sm text-gray-500">{visit.diagnosis}</p>
+                      )}
                     </div>
-                    <div className="text-sm text-gray-500">
-                      {new Date(visit.visit_date).toLocaleDateString()}
+                    <div className="text-right">
+                      <Badge className={getVisitTypeColor(visit.visit_type)}>
+                        {visit.visit_type?.replace('_', ' ')}
+                      </Badge>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {new Date(visit.visit_date).toLocaleDateString()}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -243,70 +252,32 @@ const DashboardHome = ({ userRole, onTabChange }: DashboardHomeProps) => {
           </CardContent>
         </Card>
 
+        {/* Urgent Alerts */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Syringe className="w-5 h-5 mr-2 text-orange-600" />
-              Recent Immunizations
+              <AlertTriangle className="w-5 h-5 mr-2" />
+              Urgent Alerts
             </CardTitle>
-            <CardDescription>
-              Latest vaccination records
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            {stats.recentImmunizations.length > 0 ? (
+            {stats.urgentAlerts.length > 0 ? (
               <div className="space-y-3">
-                {stats.recentImmunizations.map((immunization) => (
-                  <div key={immunization.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium">{immunization.students?.full_name || 'Unknown Student'}</p>
-                      <p className="text-sm text-gray-600">{immunization.vaccine_name}</p>
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {new Date(immunization.date_administered).toLocaleDateString()}
-                    </div>
+                {stats.urgentAlerts.map((alert: any, index: number) => (
+                  <div key={index} className={`p-3 rounded-lg border ${getAlertColor(alert.severity)}`}>
+                    <p className="text-sm font-medium">{alert.message}</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-4">No recent immunizations</p>
+              <p className="text-gray-500 text-center py-4">No urgent alerts</p>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Heart className="w-5 h-5 mr-2 text-red-600" />
-            Quick Actions
-          </CardTitle>
-          <CardDescription>
-            Common tasks for health management
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-16 flex flex-col items-center justify-center" onClick={() => onTabChange('students')}>
-              <Users className="w-5 h-5 mb-1" />
-              <span className="text-xs">View Students</span>
-            </Button>
-            <Button variant="outline" className="h-16 flex flex-col items-center justify-center" onClick={() => onTabChange('clinic')}>
-              <Stethoscope className="w-5 h-5 mb-1" />
-              <span className="text-xs">New Visit</span>
-            </Button>
-            <Button variant="outline" className="h-16 flex flex-col items-center justify-center" onClick={() => onTabChange('immunizations')}>
-              <Syringe className="w-5 h-5 mb-1" />
-              <span className="text-xs">Immunizations</span>
-            </Button>
-            <Button variant="outline" className="h-16 flex flex-col items-center justify-center" onClick={() => onTabChange('medication')}>
-              <Pill className="w-5 h-5 mb-1" />
-              <span className="text-xs">Medications</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Debug Section - Only show for development */}
+      <ProfileDebugger />
     </div>
   );
 };

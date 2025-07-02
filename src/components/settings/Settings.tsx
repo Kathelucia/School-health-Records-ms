@@ -1,274 +1,212 @@
 
 import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Settings as SettingsIcon, Shield, Bell } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { User, Users, Bug } from 'lucide-react';
+import StaffManagement from './StaffManagement';
+import ProfileDebugger from '@/components/debug/ProfileDebugger';
 
 interface SettingsProps {
-  userProfile: any;
-  onProfileUpdate: (profile: any) => void;
+  userRole: string;
 }
 
-const Settings = ({ userProfile, onProfileUpdate }: SettingsProps) => {
-  const [formData, setFormData] = useState({
+const Settings = ({ userRole }: SettingsProps) => {
+  const [profile, setProfile] = useState({
     full_name: '',
     email: '',
     phone_number: '',
-    employee_id: '',
     department: '',
-    role: ''
+    employee_id: ''
   });
-  const [loading, setLoading] = useState(false);
-
-  const roleOptions = [
-    { value: 'admin', label: 'Administrator' },
-    { value: 'nurse', label: 'School Nurse' }
-  ];
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (userProfile) {
-      setFormData({
-        full_name: userProfile.full_name || '',
-        email: userProfile.email || '',
-        phone_number: userProfile.phone_number || '',
-        employee_id: userProfile.employee_id || '',
-        department: userProfile.department || '',
-        role: userProfile.role || 'nurse'
-      });
-    }
-  }, [userProfile]);
+    fetchProfile();
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!userProfile?.id) {
-      toast.error('No user profile found. Please refresh the page.');
-      return;
-    }
-
-    setLoading(true);
-
+  const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: formData.full_name.trim(),
-          phone_number: formData.phone_number.trim() || null,
-          employee_id: formData.employee_id.trim() || null,
-          department: formData.department.trim() || null,
-          role: formData.role,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', userProfile.id)
-        .select()
-        .single();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
 
-      if (error) {
-        throw error;
+        if (!error && data) {
+          setProfile({
+            full_name: data.full_name || '',
+            email: data.email || '',
+            phone_number: data.phone_number || '',
+            department: data.department || '',
+            employee_id: data.employee_id || ''
+          });
+        }
       }
-
-      onProfileUpdate(data);
-      toast.success('Profile updated successfully');
-    } catch (error: any) {
-      console.error('Error updating profile:', error);
-      toast.error('Error updating profile: ' + (error.message || 'Unknown error'));
+    } catch (error) {
+      console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
 
-  const getRoleDisplayName = (role: string) => {
-    switch (role) {
-      case 'nurse': return 'School Nurse';
-      case 'admin': return 'Administrator';
-      default: return 'User';
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase
+          .from('profiles')
+          .update(profile)
+          .eq('id', user.id);
+
+        if (error) throw error;
+        toast.success('Profile updated successfully');
+      }
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast.error('Error updating profile: ' + error.message);
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (!userProfile) {
+  const departments = [
+    'Health Services',
+    'Administration',
+    'Nursing',
+    'Medical',
+    'Other'
+  ];
+
+  if (loading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
-        <div className="text-center">
-          <p className="text-gray-600">Loading profile...</p>
+      <div className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <SettingsIcon className="w-6 h-6" />
-          Account Settings
-        </h2>
-        <p className="text-gray-600">Manage your profile information and account preferences</p>
+        <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
+        <p className="text-gray-600">Manage your profile and system settings</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <Tabs defaultValue="profile" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="profile" className="flex items-center">
+            <User className="w-4 h-4 mr-2" />
+            My Profile
+          </TabsTrigger>
+          {userRole === 'admin' && (
+            <TabsTrigger value="staff" className="flex items-center">
+              <Users className="w-4 h-4 mr-2" />
+              Staff Management
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="debug" className="flex items-center">
+            <Bug className="w-4 h-4 mr-2" />
+            Debug Tools
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="profile">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                Profile Information
-              </CardTitle>
-              <CardDescription>
-                Update your personal information and contact details
-              </CardDescription>
+              <CardTitle>Profile Information</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleProfileUpdate} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="full_name">Full Name *</Label>
+                    <Label htmlFor="full_name">Full Name</Label>
                     <Input
                       id="full_name"
-                      value={formData.full_name}
-                      onChange={(e) => handleInputChange('full_name', e.target.value)}
-                      placeholder="Enter your full name"
+                      value={profile.full_name}
+                      onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                       required
                     />
                   </div>
+
                   <div>
-                    <Label htmlFor="email">Email Address</Label>
+                    <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
                       type="email"
-                      value={formData.email}
-                      disabled
-                      className="bg-gray-100"
+                      value={profile.email}
+                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                      required
                     />
-                    <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="phone_number">Phone Number</Label>
                     <Input
                       id="phone_number"
-                      value={formData.phone_number}
-                      onChange={(e) => handleInputChange('phone_number', e.target.value)}
-                      placeholder="e.g., +254 700 123 456"
+                      value={profile.phone_number}
+                      onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })}
                     />
                   </div>
+
                   <div>
                     <Label htmlFor="employee_id">Employee ID</Label>
                     <Input
                       id="employee_id"
-                      value={formData.employee_id}
-                      onChange={(e) => handleInputChange('employee_id', e.target.value)}
-                      placeholder="Enter your employee ID"
+                      value={profile.employee_id}
+                      onChange={(e) => setProfile({ ...profile, employee_id: e.target.value })}
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                  <div className="md:col-span-2">
                     <Label htmlFor="department">Department</Label>
-                    <Input
-                      id="department"
-                      value={formData.department}
-                      onChange={(e) => handleInputChange('department', e.target.value)}
-                      placeholder="e.g., Health Services"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="role">Role</Label>
-                    <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
+                    <Select value={profile.department} onValueChange={(value) => setProfile({ ...profile, department: value })}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
+                        <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
-                        {roleOptions.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        {departments.map(dept => (
+                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-4">
-                  <Button type="submit" disabled={loading}>
-                    {loading ? 'Updating...' : 'Update Profile'}
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? 'Saving...' : 'Update Profile'}
                   </Button>
                 </div>
               </form>
             </CardContent>
           </Card>
-        </div>
+        </TabsContent>
 
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                Account Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium text-gray-600">Current Role</Label>
-                <p className="text-sm font-semibold">{getRoleDisplayName(userProfile?.role)}</p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-600">Account Status</Label>
-                <p className="text-sm font-semibold text-green-600">Active</p>
-              </div>
-              {userProfile?.updated_at && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Last Updated</Label>
-                  <p className="text-sm">{new Date(userProfile.updated_at).toLocaleDateString()}</p>
-                </div>
-              )}
-              {userProfile?.created_at && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Member Since</Label>
-                  <p className="text-sm">{new Date(userProfile.created_at).toLocaleDateString()}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {userRole === 'admin' && (
+          <TabsContent value="staff">
+            <StaffManagement />
+          </TabsContent>
+        )}
 
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="w-5 h-5" />
-                Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Email notifications</span>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Enabled</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">System alerts</span>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Enabled</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Medication alerts</span>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Enabled</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        <TabsContent value="debug">
+          <ProfileDebugger />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
