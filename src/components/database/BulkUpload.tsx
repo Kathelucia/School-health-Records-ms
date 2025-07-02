@@ -1,5 +1,5 @@
-
 import { useState } from 'react';
+import Papa from 'papaparse';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, FileText, CheckCircle, XCircle, AlertTriangle, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
 
 interface BulkUploadProps {
   userRole: string;
@@ -30,10 +29,8 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       const fileExtension = selectedFile.name.toLowerCase();
-      if (!fileExtension.endsWith('.csv') && 
-          !fileExtension.endsWith('.xlsx') && 
-          !fileExtension.endsWith('.xls')) {
-        toast.error('Please select a CSV or Excel file (.csv, .xlsx, .xls)');
+      if (!fileExtension.endsWith('.csv')) {
+        toast.error('Please select a CSV file (.csv)');
         return;
       }
       setFile(selectedFile);
@@ -41,89 +38,23 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
     }
   };
 
-  const parseFile = async (file: File): Promise<any[]> => {
-    const fileName = file.name.toLowerCase();
-    
-    if (fileName.endsWith('.csv')) {
-      // Parse CSV
-      const csvText = await file.text();
-      return parseCSV(csvText);
-    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-      // Parse Excel
-      return parseExcel(file);
-    } else {
-      throw new Error('Unsupported file format');
-    }
-  };
-
-  const parseCSV = (csvText: string): any[] => {
-    const lines = csvText.split('\n');
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-    const data = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      if (lines[i].trim()) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-        const row: any = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        data.push(row);
-      }
-    }
-
-    return data;
-  };
-
-  const parseExcel = async (file: File): Promise<any[]> => {
+  const parseCSV = (file: File): Promise<any[]> => {
     return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          
-          // Get the first worksheet
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          
-          // Convert to JSON
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          
-          if (jsonData.length === 0) {
-            reject(new Error('Empty spreadsheet'));
-            return;
-          }
-          
-          // Convert to object format similar to CSV parsing
-          const headers = (jsonData[0] as string[]).map(h => String(h).trim());
-          const students = [];
-          
-          for (let i = 1; i < jsonData.length; i++) {
-            const row = jsonData[i] as any[];
-            if (row && row.some(cell => cell !== undefined && cell !== '')) {
-              const student: any = {};
-              headers.forEach((header, index) => {
-                student[header] = row[index] ? String(row[index]).trim() : '';
-              });
-              students.push(student);
-            }
-          }
-          
-          resolve(students);
-        } catch (error) {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          resolve(results.data as any[]);
+        },
+        error: (error) => {
           reject(error);
         }
-      };
-      
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsArrayBuffer(file);
+      });
     });
   };
 
   const validateStudentData = (student: any): string[] => {
     const errors = [];
-    
     if (!student.full_name) errors.push('Full name is required');
     if (student.student_id && !/^[A-Za-z0-9]+$/.test(student.student_id)) {
       errors.push('Student ID must contain only letters and numbers');
@@ -134,7 +65,6 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
     if (student.email && !/\S+@\S+\.\S+/.test(student.email)) {
       errors.push('Invalid email format');
     }
-
     return errors;
   };
 
@@ -148,8 +78,8 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
     setProgress(0);
 
     try {
-      const students = await parseFile(file);
-      
+      const students = await parseCSV(file);
+
       let successCount = 0;
       let failedCount = 0;
       const errors: string[] = [];
@@ -223,14 +153,14 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
     }
   };
 
-  const downloadTemplate = (format: 'csv' | 'excel') => {
+  const downloadTemplate = () => {
     const headers = [
       'full_name', 'student_id', 'admission_number', 'date_of_birth', 'gender',
       'form_level', 'stream', 'blood_group', 'allergies', 'chronic_conditions',
       'parent_guardian_name', 'parent_guardian_phone', 'county', 'sub_county',
       'ward', 'village', 'admission_date'
     ];
-    
+
     const sampleData = [
       'John Doe', 'STU001', '2024001', '2010-01-15', 'male',
       'form_1', 'East', 'O+', '', 'None',
@@ -238,24 +168,16 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
       'Parklands', 'Parklands Estate', '2024-01-15'
     ];
 
-    if (format === 'csv') {
-      const template = [headers.join(','), sampleData.join(',')].join('\n');
-      const blob = new Blob([template], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'student_upload_template.csv';
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } else {
-      // Create Excel template
-      const ws = XLSX.utils.aoa_to_sheet([headers, sampleData]);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Students');
-      XLSX.writeFile(wb, 'student_upload_template.xlsx');
-    }
-    
-    toast.success(`${format.toUpperCase()} template downloaded successfully`);
+    const template = [headers.join(','), sampleData.join(',')].join('\n');
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'student_upload_template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+
+    toast.success(`CSV template downloaded successfully`);
   };
 
   if (userRole !== 'admin') {
@@ -274,7 +196,7 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
     <div className="p-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Bulk Database Upload</h2>
-        <p className="text-gray-600">Upload student data from CSV or Excel files</p>
+        <p className="text-gray-600">Upload student data from CSV files</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -285,7 +207,7 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
               Upload Students File
             </CardTitle>
             <CardDescription>
-              Upload a CSV or Excel file (.csv, .xlsx, .xls) containing student information
+              Upload a CSV file (.csv) containing student information
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -294,7 +216,7 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
               <Input
                 id="file-upload"
                 type="file"
-                accept=".csv,.xlsx,.xls"
+                accept=".csv"
                 onChange={handleFileChange}
                 disabled={uploading}
               />
@@ -309,23 +231,13 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
 
             <div className="flex flex-wrap gap-2">
               <Button
-                onClick={() => downloadTemplate('csv')}
+                onClick={downloadTemplate}
                 variant="outline"
                 className="flex items-center"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Download CSV Template
               </Button>
-              
-              <Button
-                onClick={() => downloadTemplate('excel')}
-                variant="outline"
-                className="flex items-center"
-              >
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Download Excel Template
-              </Button>
-              
               <Button
                 onClick={handleUpload}
                 disabled={!file || uploading}
@@ -408,10 +320,8 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
               <h4 className="font-medium mb-2">Supported File Types:</h4>
               <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
                 <li><strong>CSV Files</strong> - Comma-separated values (.csv)</li>
-                <li><strong>Excel Files</strong> - Microsoft Excel (.xlsx, .xls)</li>
               </ul>
             </div>
-            
             <div>
               <h4 className="font-medium mb-2">Required Columns:</h4>
               <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">

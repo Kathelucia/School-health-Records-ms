@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Stethoscope } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,13 +19,23 @@ const Auth = () => {
     fullName: '', 
     role: 'nurse' 
   });
+  const [debugProfileOpen, setDebugProfileOpen] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Check if user is already logged in (fallback: check localStorage)
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        console.log('User already logged in, redirecting to dashboard');
+      let loggedIn = false;
+      try {
+        if (typeof window !== 'undefined') {
+          // Supabase v1/v2: check for access token
+          const keys = Object.keys(localStorage);
+          loggedIn = keys.some(k => k.includes('supabase.auth.token') || k.includes('sb-'));
+        }
+      } catch {}
+      if (loggedIn) {
         window.location.href = '/';
       }
     };
@@ -44,39 +54,26 @@ const Auth = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
     try {
-      console.log('Attempting login with email:', loginData.email);
-      
-      // Clean up any existing state first
       cleanupAuthState();
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginData.email.trim(),
         password: loginData.password,
       });
-
       if (error) {
-        console.error('Login error:', error);
-        if (error.message.includes('Invalid login credentials')) {
+        if (error.message && error.message.includes('Invalid login credentials')) {
           toast.error('Invalid email or password. Please check your credentials.');
         } else {
-          toast.error(error.message);
+          toast.error(error.message || 'Login failed.');
         }
+        setIsLoading(false);
         return;
       }
-
       if (data.user) {
-        console.log('Login successful for user:', data.user.id);
         toast.success('Login successful! Redirecting...');
-        
-        // Force page refresh to ensure clean state
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 500);
+        setTimeout(() => { window.location.href = '/'; }, 500);
       }
     } catch (error: any) {
-      console.error('Login error:', error);
       toast.error('Login failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -86,24 +83,18 @@ const Auth = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
     try {
-      console.log('Attempting signup with email:', signupData.email);
-      
-      // Basic validation
       if (signupData.password.length < 6) {
         toast.error('Password must be at least 6 characters long');
+        setIsLoading(false);
         return;
       }
-      
       if (!signupData.fullName.trim()) {
         toast.error('Full name is required');
+        setIsLoading(false);
         return;
       }
-      
-      // Clean up any existing state first
       cleanupAuthState();
-      
       const { data, error } = await supabase.auth.signUp({
         email: signupData.email.trim(),
         password: signupData.password,
@@ -114,41 +105,41 @@ const Auth = () => {
           }
         }
       });
-
       if (error) {
-        console.error('Signup error:', error);
-        if (error.message.includes('already registered')) {
+        if (error.message && error.message.includes('already registered')) {
           toast.error('This email is already registered. Please sign in instead.');
         } else {
-          toast.error(error.message);
+          toast.error(error.message || 'Signup failed.');
         }
+        setIsLoading(false);
         return;
       }
-
       if (data.user) {
-        console.log('Signup successful for user:', data.user.id);
-        
-        if (data.user.email_confirmed_at) {
-          toast.success('Account created successfully! Redirecting...');
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 500);
-        } else {
-          toast.success('Account created! You can now sign in.');
-          // Switch to login tab
-          const loginTab = document.querySelector('[value="login"]') as HTMLElement;
-          if (loginTab) {
-            loginTab.click();
-          }
-          // Pre-fill login email
-          setLoginData({ ...loginData, email: signupData.email });
-        }
+        toast.success('Account created! You can now sign in.');
+        const loginTab = document.querySelector('[value="login"]') as HTMLElement;
+        if (loginTab) loginTab.click();
+        setLoginData({ ...loginData, email: signupData.email });
       }
     } catch (error: any) {
-      console.error('Signup error:', error);
       toast.error('Signup failed. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Debug profile fetch
+  const handleDebugProfile = async () => {
+    setProfileLoading(true);
+    setProfileError(null);
+    setProfile(null);
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      setProfile(data.user);
+    } catch (err: any) {
+      setProfileError(err.message || 'Failed to fetch profile');
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -269,9 +260,7 @@ const Auth = () => {
                       disabled={isLoading}
                     >
                       <option value="nurse">School Nurse</option>
-                      <option value="clinical_officer">Clinical Officer</option>
                       <option value="admin">System Administrator</option>
-                      <option value="other_staff">Other Staff</option>
                     </select>
                   </div>
                   <div>
@@ -312,6 +301,32 @@ const Auth = () => {
           <p>For demo purposes, you can create an account with any valid email.</p>
           <p>Admin accounts have full access to all features.</p>
         </div>
+        <div className="mt-4 flex justify-center">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setDebugProfileOpen(true);
+              handleDebugProfile();
+            }}
+          >
+            Debug Profile
+          </Button>
+        </div>
+        <Dialog open={debugProfileOpen} onOpenChange={setDebugProfileOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Current User Profile</DialogTitle>
+              <DialogDescription>
+                {profileLoading && <span>Loading...</span>}
+                {profileError && <span className="text-red-500">{profileError}</span>}
+                {profile && (
+                  <pre className="bg-gray-100 rounded p-2 text-xs overflow-x-auto mt-2">{JSON.stringify(profile, null, 2)}</pre>
+                )}
+                {!profileLoading && !profile && !profileError && <span>No user logged in.</span>}
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
