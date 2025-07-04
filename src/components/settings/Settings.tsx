@@ -1,9 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { User, Mail, Phone, Building, Settings as SettingsIcon, Shield } from 'lucide-react';
@@ -35,21 +35,40 @@ const Settings = ({ userRole, onProfileUpdate }: SettingsProps) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Try to get profile from profiles table
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (error) throw error;
+        let profileData;
+        if (error && error.code === 'PGRST116') {
+          // No profile found, create a basic one from user data
+          profileData = {
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || user.email,
+            role: userRole,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+            phone_number: '',
+            employee_id: '',
+            department: ''
+          };
+        } else if (error) {
+          throw error;
+        } else {
+          profileData = data;
+        }
         
-        setProfile(data);
+        setProfile(profileData);
         setFormData({
-          full_name: data.full_name || '',
-          email: data.email || '',
-          phone_number: data.phone_number || '',
-          employee_id: data.employee_id || '',
-          department: data.department || ''
+          full_name: profileData.full_name || '',
+          email: profileData.email || '',
+          phone_number: profileData.phone_number || '',
+          employee_id: profileData.employee_id || '',
+          department: profileData.department || ''
         });
       }
     } catch (error) {
@@ -68,10 +87,15 @@ const Settings = ({ userRole, onProfileUpdate }: SettingsProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
+      // Try to update existing profile or insert new one
       const { error } = await supabase
         .from('profiles')
-        .update(formData)
-        .eq('id', user.id);
+        .upsert({
+          id: user.id,
+          ...formData,
+          role: userRole,
+          updated_at: new Date().toISOString()
+        });
 
       if (error) throw error;
 
@@ -205,7 +229,7 @@ const Settings = ({ userRole, onProfileUpdate }: SettingsProps) => {
                     <Shield className="w-5 h-5 text-gray-400" />
                     <div>
                       <Badge className={userRole === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}>
-                        {userRole === 'admin' ? 'Administrator' : 'Nurse'}
+                        {userRole === 'admin' ? 'Administrator' : 'Staff'}
                       </Badge>
                       <p className="text-sm text-gray-600">Role</p>
                     </div>

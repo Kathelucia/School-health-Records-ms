@@ -32,12 +32,25 @@ const Dashboard = ({ userRole }: DashboardProps) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // For now, create a basic profile object with the user data
+        // Try to get profile from profiles table
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching profile:', error);
+        }
+
+        // Create profile object with available data
         setUserProfile({
           id: user.id,
           email: user.email,
-          full_name: user.user_metadata?.full_name || user.email,
-          role: userRole
+          full_name: profile?.full_name || user.user_metadata?.full_name || user.email,
+          role: profile?.role || userRole,
+          created_at: profile?.created_at || user.created_at,
+          updated_at: profile?.updated_at || user.updated_at
         });
       }
     } catch (error) {
@@ -64,16 +77,16 @@ const Dashboard = ({ userRole }: DashboardProps) => {
 
   const getCurrentView = () => {
     const path = location.pathname;
-    if (path === '/') return 'home';
-    if (path.startsWith('/students')) return 'students';
-    if (path.startsWith('/staff')) return 'staff';
-    if (path.startsWith('/clinic')) return 'clinic';
-    if (path.startsWith('/immunizations')) return 'immunizations';
-    if (path.startsWith('/medications')) return 'medication';
-    if (path.startsWith('/insurance')) return 'insurance';
-    if (path.startsWith('/reports')) return 'reports';
-    if (path.startsWith('/upload')) return 'bulk-upload';
-    if (path.startsWith('/settings')) return 'settings';
+    if (path === '/' || path === '') return 'home';
+    if (path.includes('/students')) return 'students';
+    if (path.includes('/staff')) return 'staff';
+    if (path.includes('/clinic')) return 'clinic';
+    if (path.includes('/immunizations')) return 'immunizations';
+    if (path.includes('/medications')) return 'medication';
+    if (path.includes('/insurance')) return 'insurance';
+    if (path.includes('/reports')) return 'reports';
+    if (path.includes('/upload')) return 'bulk-upload';
+    if (path.includes('/settings')) return 'settings';
     return 'home';
   };
 
@@ -92,7 +105,7 @@ const Dashboard = ({ userRole }: DashboardProps) => {
         
         <main className="flex-1 overflow-y-auto bg-gray-50 animate-fade-in">
           <Routes>
-            <Route path="/" element={<DashboardHome userRole={userRole} />} />
+            <Route index element={<DashboardHome userRole={userRole} />} />
             <Route path="/students" element={<StudentProfiles userRole={userRole} />} />
             <Route path="/staff" element={<StaffProfiles userRole={userRole} />} />
             <Route path="/clinic" element={<ClinicVisits userRole={userRole} />} />
