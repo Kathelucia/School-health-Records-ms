@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,9 +12,10 @@ import { toast } from 'sonner';
 
 interface SettingsProps {
   userRole: string;
+  onProfileUpdate?: () => Promise<void>;
 }
 
-const Settings = ({ userRole }: SettingsProps) => {
+const Settings = ({ userRole, onProfileUpdate }: SettingsProps) => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -77,6 +77,11 @@ const Settings = ({ userRole }: SettingsProps) => {
 
       toast.success('Profile updated successfully');
       fetchProfile(); // Refresh profile data
+      
+      // Call the optional onProfileUpdate callback
+      if (onProfileUpdate) {
+        await onProfileUpdate();
+      }
     } catch (error: any) {
       console.error('Error updating profile:', error);
       toast.error('Error updating profile: ' + error.message);
