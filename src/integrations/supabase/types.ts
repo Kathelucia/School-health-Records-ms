@@ -379,21 +379,36 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          department: string | null
+          email: string | null
+          employee_id: string | null
+          full_name: string | null
           id: string
+          phone_number: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
           created_at?: string | null
+          department?: string | null
+          email?: string | null
+          employee_id?: string | null
+          full_name?: string | null
           id: string
+          phone_number?: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
           created_at?: string | null
+          department?: string | null
+          email?: string | null
+          employee_id?: string | null
+          full_name?: string | null
           id?: string
+          phone_number?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
           user_id?: string | null

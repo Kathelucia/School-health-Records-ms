@@ -25,8 +25,10 @@ const Dashboard = ({ userRole }: DashboardProps) => {
   const location = useLocation();
 
   useEffect(() => {
-    fetchUserProfile();
-  }, []);
+    if (userRole) {
+      fetchUserProfile();
+    }
+  }, [userRole]);
 
   const fetchUserProfile = async () => {
     try {
@@ -46,9 +48,12 @@ const Dashboard = ({ userRole }: DashboardProps) => {
         // Create profile object with available data
         setUserProfile({
           id: user.id,
-          email: user.email,
+          email: profile?.email || user.email,
           full_name: profile?.full_name || user.user_metadata?.full_name || user.email,
           role: profile?.role || userRole,
+          phone_number: profile?.phone_number || '',
+          employee_id: profile?.employee_id || '',
+          department: profile?.department || '',
           created_at: profile?.created_at || user.created_at,
           updated_at: profile?.updated_at || user.updated_at
         });
@@ -90,6 +95,18 @@ const Dashboard = ({ userRole }: DashboardProps) => {
     return 'home';
   };
 
+  // Don't render until we have a userRole
+  if (!userRole) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar userRole={userRole} />
@@ -105,7 +122,7 @@ const Dashboard = ({ userRole }: DashboardProps) => {
         
         <main className="flex-1 overflow-y-auto bg-gray-50 animate-fade-in">
           <Routes>
-            <Route index element={<DashboardHome userRole={userRole} />} />
+            <Route path="/" element={<DashboardHome userRole={userRole} />} />
             <Route path="/students" element={<StudentProfiles userRole={userRole} />} />
             <Route path="/staff" element={<StaffProfiles userRole={userRole} />} />
             <Route path="/clinic" element={<ClinicVisits userRole={userRole} />} />

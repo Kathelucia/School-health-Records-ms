@@ -57,9 +57,14 @@ const Settings = ({ userRole, onProfileUpdate }: SettingsProps) => {
             department: ''
           };
         } else if (error) {
+          console.error('Error fetching profile:', error);
           throw error;
         } else {
-          profileData = data;
+          profileData = {
+            ...data,
+            email: data.email || user.email,
+            full_name: data.full_name || user.user_metadata?.full_name || user.email
+          };
         }
         
         setProfile(profileData);
@@ -87,7 +92,7 @@ const Settings = ({ userRole, onProfileUpdate }: SettingsProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      // Try to update existing profile or insert new one
+      // Use upsert to handle both insert and update
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -95,12 +100,32 @@ const Settings = ({ userRole, onProfileUpdate }: SettingsProps) => {
           ...formData,
           role: userRole,
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Profile upsert error:', error);
+        if (error.code === '406' || error.message.includes('406')) {
+          // Handle 406 errors by trying a simple update first
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              ...formData,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id);
+            
+          if (updateError) {
+            throw updateError;
+          }
+        } else {
+          throw error;
+        }
+      }
 
       toast.success('Profile updated successfully');
-      fetchProfile(); // Refresh profile data
+      await fetchProfile(); // Refresh profile data
       
       // Call the optional onProfileUpdate callback
       if (onProfileUpdate) {
@@ -108,7 +133,7 @@ const Settings = ({ userRole, onProfileUpdate }: SettingsProps) => {
       }
     } catch (error: any) {
       console.error('Error updating profile:', error);
-      toast.error('Error updating profile: ' + error.message);
+      toast.error('Error updating profile: ' + (error.message || 'Unknown error'));
     } finally {
       setSaving(false);
     }
@@ -220,7 +245,7 @@ const Settings = ({ userRole, onProfileUpdate }: SettingsProps) => {
                   <div className="flex items-center space-x-3">
                     <User className="w-5 h-5 text-gray-400" />
                     <div>
-                      <p className="font-medium">{profile.full_name}</p>
+                      <p className="font-medium">{profile.full_name || 'Not set'}</p>
                       <p className="text-sm text-gray-600">Full Name</p>
                     </div>
                   </div>
@@ -229,7 +254,7 @@ const Settings = ({ userRole, onProfileUpdate }: SettingsProps) => {
                     <Shield className="w-5 h-5 text-gray-400" />
                     <div>
                       <Badge className={userRole === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}>
-                        {userRole === 'admin' ? 'Administrator' : 'Staff'}
+                        {userRole === 'admin' ? 'Administrator' : 'Nurse'}
                       </Badge>
                       <p className="text-sm text-gray-600">Role</p>
                     </div>
@@ -238,7 +263,7 @@ const Settings = ({ userRole, onProfileUpdate }: SettingsProps) => {
                   <div className="flex items-center space-x-3">
                     <Mail className="w-5 h-5 text-gray-400" />
                     <div>
-                      <p className="font-medium">{profile.email}</p>
+                      <p className="font-medium">{profile.email || 'Not set'}</p>
                       <p className="text-sm text-gray-600">Email</p>
                     </div>
                   </div>

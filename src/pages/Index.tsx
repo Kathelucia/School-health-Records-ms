@@ -12,23 +12,29 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Set up auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.id);
       setUser(session?.user ?? null);
+      
       if (session?.user) {
-        fetchUserRole(session.user.id);
+        // Defer profile fetching to avoid deadlocks
+        setTimeout(() => {
+          fetchUserRole(session.user.id);
+        }, 0);
       } else {
+        setUserRole('');
         setLoading(false);
       }
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.id);
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchUserRole(session.user.id);
       } else {
-        setUserRole('');
         setLoading(false);
       }
     });
@@ -38,20 +44,50 @@ const Index = () => {
 
   const fetchUserRole = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      console.log('Fetching role for user:', userId);
+      
+      // First try to get existing profile
+      let { data: profile, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching user role:', error);
-        toast.error('Error loading user profile');
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile:', error);
+        throw error;
+      }
+
+      // If no profile exists, create one
+      if (!profile) {
+        console.log('No profile found, creating default profile');
+        const { data: user } = await supabase.auth.getUser();
+        
+        const { data: newProfile, error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            email: user.user?.email || '',
+            full_name: user.user?.user_metadata?.full_name || user.user?.email || '',
+            role: 'nurse'
+          })
+          .select('role')
+          .single();
+
+        if (insertError) {
+          console.error('Error creating profile:', insertError);
+          // Fallback to default role if creation fails
+          setUserRole('nurse');
+        } else {
+          setUserRole(newProfile?.role || 'nurse');
+        }
       } else {
-        setUserRole(data?.role || 'nurse');
+        setUserRole(profile.role || 'nurse');
       }
     } catch (error) {
-      console.error('Error fetching user role:', error);
+      console.error('Error in fetchUserRole:', error);
+      // Fallback to default role
+      setUserRole('nurse');
     } finally {
       setLoading(false);
     }
@@ -61,7 +97,7 @@ const Index = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
         <div className="text-center animate-fade-in">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse-glow">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
             <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
           </div>
           <h2 className="text-xl font-semibold text-gray-800 mb-2">School Health System</h2>
