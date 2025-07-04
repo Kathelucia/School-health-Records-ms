@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import Auth from './Auth';
@@ -18,10 +18,10 @@ const Index = () => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        // Defer profile fetching to avoid deadlocks
+        // Defer profile fetching to avoid issues
         setTimeout(() => {
           fetchUserRole(session.user.id);
-        }, 0);
+        }, 100);
       } else {
         setUserRole('');
         setLoading(false);
@@ -46,7 +46,7 @@ const Index = () => {
     try {
       console.log('Fetching role for user:', userId);
       
-      // First try to get existing profile
+      // Try to get existing profile
       let { data: profile, error } = await supabase
         .from('profiles')
         .select('role')
@@ -58,7 +58,7 @@ const Index = () => {
         throw error;
       }
 
-      // If no profile exists, create one
+      // If no profile exists, create one with default values
       if (!profile) {
         console.log('No profile found, creating default profile');
         const { data: user } = await supabase.auth.getUser();
@@ -76,7 +76,7 @@ const Index = () => {
 
         if (insertError) {
           console.error('Error creating profile:', insertError);
-          // Fallback to default role if creation fails
+          // Set default role even if creation fails
           setUserRole('nurse');
         } else {
           setUserRole(newProfile?.role || 'nurse');
@@ -86,7 +86,7 @@ const Index = () => {
       }
     } catch (error) {
       console.error('Error in fetchUserRole:', error);
-      // Fallback to default role
+      // Set default role on any error
       setUserRole('nurse');
     } finally {
       setLoading(false);
