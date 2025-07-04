@@ -12,6 +12,7 @@ import MedicationInventorySystem from '@/components/medication/MedicationInvento
 import BulkUpload from '@/components/database/BulkUpload';
 import Settings from '@/components/settings/Settings';
 import InsuranceManagement from '@/components/insurance/InsuranceManagement';
+import Reports from '@/components/reports/Reports';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -31,14 +32,13 @@ const Dashboard = ({ userRole }: DashboardProps) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (error) throw error;
-        setUserProfile(data);
+        // For now, create a basic profile object with the user data
+        setUserProfile({
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || user.email,
+          role: userRole
+        });
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -71,6 +71,7 @@ const Dashboard = ({ userRole }: DashboardProps) => {
     if (path.startsWith('/immunizations')) return 'immunizations';
     if (path.startsWith('/medications')) return 'medication';
     if (path.startsWith('/insurance')) return 'insurance';
+    if (path.startsWith('/reports')) return 'reports';
     if (path.startsWith('/upload')) return 'bulk-upload';
     if (path.startsWith('/settings')) return 'settings';
     return 'home';
@@ -98,6 +99,7 @@ const Dashboard = ({ userRole }: DashboardProps) => {
             <Route path="/immunizations" element={<ImmunizationManagement userRole={userRole} />} />
             <Route path="/medications" element={<MedicationInventorySystem userRole={userRole} />} />
             <Route path="/insurance" element={<InsuranceManagement userRole={userRole} />} />
+            <Route path="/reports" element={<Reports userRole={userRole} />} />
             <Route path="/upload" element={<BulkUpload userRole={userRole} />} />
             <Route path="/settings" element={<Settings userRole={userRole} onProfileUpdate={fetchUserProfile} />} />
           </Routes>

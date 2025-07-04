@@ -5,28 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line
-} from 'recharts';
-import { 
   Download, 
   FileText, 
-  TrendingUp, 
   Users, 
+  UserCheck,
   Stethoscope,
-  AlertTriangle,
+  Shield,
   Calendar,
-  Activity
+  TrendingUp
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -36,397 +22,373 @@ interface ReportsProps {
 }
 
 const Reports = ({ userRole }: ReportsProps) => {
-  const [loading, setLoading] = useState(true);
-  const [reportData, setReportData] = useState({
-    studentStats: {
-      total: 0,
-      byGender: [],
-      byFormLevel: [],
-      withMedicalConditions: 0
-    },
-    clinicStats: {
-      totalVisits: 0,
-      monthlyVisits: [],
-      visitTypes: [],
-      frequentVisitors: []
-    },
-    healthTrends: {
-      commonConditions: [],
-      vaccinationCompliance: [],
-      medicationUsage: []
-    },
-    riskAssessment: {
-      highRiskStudents: [],
-      emergencyContacts: 0,
-      chronicConditions: []
-    }
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalStaff: 0,
+    totalVisits: 0,
+    totalImmunizations: 0,
+    recentVisits: [],
+    upcomingImmunizations: []
   });
 
   useEffect(() => {
-    fetchReportData();
+    fetchReportsData();
   }, []);
 
-  const fetchReportData = async () => {
+  const fetchReportsData = async () => {
     try {
       setLoading(true);
       
-      // Fetch student statistics
-      const { data: students, error: studentsError } = await supabase
-        .from('students')
-        .select('*')
-        .eq('is_active', true);
+      // Fetch basic statistics
+      const [studentsData, visitsData, immunizationsData] = await Promise.all([
+        supabase.from('students').select('id', { count: 'exact' }),
+        supabase.from('clinic_visits').select('id', { count: 'exact' }),
+        supabase.from('immunizations').select('id', { count: 'exact' })
+      ]);
 
-      if (studentsError) throw studentsError;
-
-      // Fetch clinic visits
-      const { data: visits, error: visitsError } = await supabase
+      // Fetch recent visits
+      const { data: recentVisits } = await supabase
         .from('clinic_visits')
-        .select('*')
-        .order('visit_date', { ascending: false });
+        .select(`
+          id,
+          visit_date,
+          visit_type,
+          students(full_name, student_id)
+        `)
+        .order('visit_date', { ascending: false })
+        .limit(5);
 
-      if (visitsError) throw visitsError;
-
-      // Fetch immunizations
-      const { data: immunizations, error: immunizationsError } = await supabase
-        .from('immunizations')
-        .select('*');
-
-      if (immunizationsError) throw immunizationsError;
-
-      // Process data for reports
-      processReportData(students || [], visits || [], immunizations || []);
-      
+      setStats({
+        totalStudents: studentsData.count || 0,
+        totalStaff: 0, // Will be updated when staff table is properly set up
+        totalVisits: visitsData.count || 0,
+        totalImmunizations: immunizationsData.count || 0,
+        recentVisits: recentVisits || [],
+        upcomingImmunizations: []
+      });
     } catch (error) {
-      console.error('Error fetching report data:', error);
-      toast.error('Error loading report data');
+      console.error('Error fetching reports data:', error);
+      toast.error('Error loading reports data');
     } finally {
       setLoading(false);
     }
   };
 
-  const processReportData = (students: any[], visits: any[], immunizations: any[]) => {
-    // Student statistics
-    const genderStats = students.reduce((acc, student) => {
-      const gender = student.gender || 'Unknown';
-      acc[gender] = (acc[gender] || 0) + 1;
-      return acc;
-    }, {});
+  const downloadReport = async (reportType: string) => {
+    try {
+      setLoading(true);
+      let data: any[] = [];
+      let filename = '';
+      let headers: string[] = [];
 
-    const formLevelStats = students.reduce((acc, student) => {
-      const form = student.form_level || 'Unknown';
-      acc[form] = (acc[form] || 0) + 1;
-      return acc;
-    }, {});
+      switch (reportType) {
+        case 'students':
+          const { data: studentsData } = await supabase
+            .from('students')
+            .select('*')
+            .eq('is_active', true);
+          data = studentsData || [];
+          filename = `students-report-${new Date().toISOString().split('T')[0]}.csv`;
+          headers = ['Full Name', 'Student ID', 'Form Level', 'Gender', 'Date of Birth', 'County'];
+          break;
 
-    const studentsWithConditions = students.filter(s => 
-      s.chronic_conditions || s.allergies
-    ).length;
+        case 'visits':
+          const { data: visitsData } = await supabase
+            .from('clinic_visits')
+            .select(`
+              *,
+              students(full_name, student_id)
+            `)
+            .order('visit_date', { ascending: false });
+          data = visitsData || [];
+          filename = `clinic-visits-report-${new Date().toISOString().split('T')[0]}.csv`;
+          headers = ['Date', 'Student Name', 'Student ID', 'Visit Type', 'Symptoms', 'Diagnosis'];
+          break;
 
-    // Clinic visit statistics
-    const monthlyVisits = visits.reduce((acc, visit) => {
-      const month = new Date(visit.visit_date).toLocaleDateString('en-US', { 
-        month: 'short', 
-        year: 'numeric' 
-      });
-      acc[month] = (acc[month] || 0) + 1;
-      return acc;
-    }, {});
+        case 'immunizations':
+          const { data: immunizationsData } = await supabase
+            .from('immunizations')
+            .select(`
+              *,
+              students(full_name, student_id)
+            `)
+            .order('date_administered', { ascending: false });
+          data = immunizationsData || [];
+          filename = `immunizations-report-${new Date().toISOString().split('T')[0]}.csv`;
+          headers = ['Date', 'Student Name', 'Student ID', 'Vaccine', 'Administered By'];
+          break;
 
-    const visitTypes = visits.reduce((acc, visit) => {
-      const type = visit.visit_type || 'routine';
-      acc[type] = (acc[type] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Common conditions
-    const conditions = visits.reduce((acc, visit) => {
-      if (visit.diagnosis) {
-        acc[visit.diagnosis] = (acc[visit.diagnosis] || 0) + 1;
+        default:
+          throw new Error('Invalid report type');
       }
-      return acc;
-    }, {});
 
-    // Vaccination compliance
-    const vaccineStats = immunizations.reduce((acc, imm) => {
-      acc[imm.vaccine_name] = (acc[imm.vaccine_name] || 0) + 1;
-      return acc;
-    }, {});
+      // Convert data to CSV
+      const csvContent = convertToCSV(data, reportType, headers);
+      downloadCSV(csvContent, filename);
+      
+      toast.success(`${reportType} report downloaded successfully`);
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      toast.error('Error downloading report');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setReportData({
-      studentStats: {
-        total: students.length,
-        byGender: Object.entries(genderStats).map(([name, value]) => ({ name, value })),
-        byFormLevel: Object.entries(formLevelStats).map(([name, value]) => ({ name, value })),
-        withMedicalConditions: studentsWithConditions
-      },
-      clinicStats: {
-        totalVisits: visits.length,
-        monthlyVisits: Object.entries(monthlyVisits).map(([name, value]) => ({ name, value })),
-        visitTypes: Object.entries(visitTypes).map(([name, value]) => ({ name, value })),
-        frequentVisitors: []
-      },
-      healthTrends: {
-        commonConditions: Object.entries(conditions)
-          .sort(([,a], [,b]) => (b as number) - (a as number))
-          .slice(0, 10)
-          .map(([name, value]) => ({ name, value })),
-        vaccinationCompliance: Object.entries(vaccineStats).map(([name, value]) => ({ name, value })),
-        medicationUsage: []
-      },
-      riskAssessment: {
-        highRiskStudents: students.filter(s => s.chronic_conditions || s.allergies),
-        emergencyContacts: students.filter(s => s.emergency_contact).length,
-        chronicConditions: []
+  const convertToCSV = (data: any[], reportType: string, headers: string[]) => {
+    const csvHeaders = headers.join(',');
+    const csvRows = data.map(item => {
+      switch (reportType) {
+        case 'students':
+          return [
+            `"${item.full_name || ''}"`,
+            `"${item.student_id || ''}"`,
+            `"${item.form_level || ''}"`,
+            `"${item.gender || ''}"`,
+            `"${item.date_of_birth || ''}"`,
+            `"${item.county || ''}"`
+          ].join(',');
+        
+        case 'visits':
+          return [
+            `"${item.visit_date || ''}"`,
+            `"${item.students?.full_name || ''}"`,
+            `"${item.students?.student_id || ''}"`,
+            `"${item.visit_type || ''}"`,
+            `"${item.symptoms || ''}"`,
+            `"${item.diagnosis || ''}"`
+          ].join(',');
+        
+        case 'immunizations':
+          return [
+            `"${item.date_administered || ''}"`,
+            `"${item.students?.full_name || ''}"`,
+            `"${item.students?.student_id || ''}"`,
+            `"${item.vaccine_name || ''}"`,
+            `"${item.administered_by || ''}"`
+          ].join(',');
+        
+        default:
+          return '';
       }
     });
+
+    return [csvHeaders, ...csvRows].join('\n');
   };
 
-  const generatePDFReport = () => {
-    toast.success('PDF report generation will be implemented soon');
+  const downloadCSV = (csvContent: string, filename: string) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
-
-  const exportToCSV = () => {
-    toast.success('CSV export will be implemented soon');
-  };
-
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Health Reports & Analytics</h2>
-          <p className="text-gray-600">Comprehensive health data analysis and reporting</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button onClick={generatePDFReport} variant="outline">
-            <FileText className="w-4 h-4 mr-2" />
-            Export PDF
-          </Button>
-          <Button onClick={exportToCSV} variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
-        </div>
+    <div className="p-6 animate-fade-in">
+      <div className="mb-6">
+        <h2 className="text-3xl font-bold text-gray-900 flex items-center">
+          <FileText className="w-8 h-8 mr-3 text-blue-600" />
+          Reports & Analytics
+        </h2>
+        <p className="text-gray-600 mt-1">Generate and download comprehensive health reports</p>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="students">Student Health</TabsTrigger>
-          <TabsTrigger value="clinic">Clinic Analytics</TabsTrigger>
-          <TabsTrigger value="compliance">Compliance</TabsTrigger>
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card className="medical-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Users className="w-8 h-8 text-blue-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Students</p>
+                <p className="text-2xl font-bold">{stats.totalStudents}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="medical-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <UserCheck className="w-8 h-8 text-green-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Staff</p>
+                <p className="text-2xl font-bold">{stats.totalStaff}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="medical-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Stethoscope className="w-8 h-8 text-purple-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Clinic Visits</p>
+                <p className="text-2xl font-bold">{stats.totalVisits}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="medical-card">
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <Shield className="w-8 h-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Immunizations</p>
+                <p className="text-2xl font-bold">{stats.totalImmunizations}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="download" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="download">Download Reports</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-                <Users className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{reportData.studentStats.total}</div>
-                <p className="text-xs text-muted-foreground">Active registrations</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Clinic Visits</CardTitle>
-                <Stethoscope className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{reportData.clinicStats.totalVisits}</div>
-                <p className="text-xs text-muted-foreground">Total recorded visits</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">High Risk</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{reportData.riskAssessment.highRiskStudents.length}</div>
-                <p className="text-xs text-muted-foreground">Students with conditions</p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Emergency Contacts</CardTitle>
-                <Activity className="h-4 w-4 text-purple-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{reportData.riskAssessment.emergencyContacts}</div>
-                <p className="text-xs text-muted-foreground">Students with contacts</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
+        <TabsContent value="download" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card className="medical-card hover-scale">
               <CardHeader>
-                <CardTitle>Student Distribution by Gender</CardTitle>
+                <CardTitle className="flex items-center">
+                  <Users className="w-5 h-5 mr-2 text-blue-600" />
+                  Students Report
+                </CardTitle>
+                <CardDescription>
+                  Download complete student profiles and health records
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={reportData.studentStats.byGender}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {reportData.studentStats.byGender.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <Button 
+                  onClick={() => downloadReport('students')}
+                  disabled={loading}
+                  className="w-full btn-medical"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download CSV
+                </Button>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="medical-card hover-scale">
               <CardHeader>
-                <CardTitle>Monthly Clinic Visits</CardTitle>
+                <CardTitle className="flex items-center">
+                  <Stethoscope className="w-5 h-5 mr-2 text-purple-600" />
+                  Clinic Visits Report
+                </CardTitle>
+                <CardDescription>
+                  Download clinic visit records and medical consultations
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={reportData.clinicStats.monthlyVisits}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="value" stroke="#3B82F6" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
+                <Button 
+                  onClick={() => downloadReport('visits')}
+                  disabled={loading}
+                  className="w-full btn-medical"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download CSV
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="medical-card hover-scale">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Shield className="w-5 h-5 mr-2 text-orange-600" />
+                  Immunizations Report
+                </CardTitle>
+                <CardDescription>
+                  Download vaccination records and compliance data
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={() => downloadReport('immunizations')}
+                  disabled={loading}
+                  className="w-full btn-medical"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download CSV
+                </Button>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="students" className="space-y-4">
+        <TabsContent value="analytics" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
+            <Card className="medical-card">
               <CardHeader>
-                <CardTitle>Students by Form Level</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={reportData.studentStats.byFormLevel}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#10B981" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>High-Risk Students</CardTitle>
-                <CardDescription>Students with chronic conditions or allergies</CardDescription>
+                <CardTitle className="flex items-center">
+                  <Calendar className="w-5 h-5 mr-2 text-blue-600" />
+                  Recent Clinic Visits
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {reportData.riskAssessment.highRiskStudents.slice(0, 5).map((student: any) => (
-                    <div key={student.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                  {stats.recentVisits.map((visit: any, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
-                        <p className="font-medium">{student.full_name}</p>
-                        <p className="text-sm text-gray-600">ID: {student.student_id}</p>
+                        <p className="font-medium">{visit.students?.full_name}</p>
+                        <p className="text-sm text-gray-600">{visit.students?.student_id}</p>
                       </div>
-                      <Badge variant="destructive">High Risk</Badge>
+                      <div className="text-right">
+                        <Badge variant="outline">{visit.visit_type}</Badge>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {new Date(visit.visit_date).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
                   ))}
+                  {stats.recentVisits.length === 0 && (
+                    <p className="text-gray-500 text-center py-4">No recent visits found</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="medical-card">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
+                  Health Trends
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Monthly Visits</span>
+                    <span className="text-lg font-bold text-blue-600">
+                      {Math.floor(stats.totalVisits / 12)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Vaccination Rate</span>
+                    <span className="text-lg font-bold text-green-600">
+                      {stats.totalStudents > 0 ? Math.round((stats.totalImmunizations / stats.totalStudents) * 100) : 0}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Active Students</span>
+                    <span className="text-lg font-bold text-purple-600">{stats.totalStudents}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="clinic" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Visit Types Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={reportData.clinicStats.visitTypes}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {reportData.clinicStats.visitTypes.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Common Health Conditions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={reportData.healthTrends.commonConditions}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#F59E0B" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="compliance" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Vaccination Compliance</CardTitle>
-              <CardDescription>Immunization records by vaccine type</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={reportData.healthTrends.vaccinationCompliance}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#8B5CF6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

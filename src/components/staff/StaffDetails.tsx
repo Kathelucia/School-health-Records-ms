@@ -1,24 +1,19 @@
 
-import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   ArrowLeft, 
   Edit, 
-  UserCheck, 
   Mail, 
   Phone, 
   Building, 
-  Hash,
+  User, 
   Heart,
-  Calendar,
   AlertTriangle,
-  Shield,
-  CreditCard
+  Droplet
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface StaffDetailsProps {
   staff: any;
@@ -27,231 +22,155 @@ interface StaffDetailsProps {
 }
 
 const StaffDetails = ({ staff, onBack, onEdit }: StaffDetailsProps) => {
-  const [clinicVisits, setClinicVisits] = useState([]);
-  const [immunizations, setImmunizations] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchStaffHealthData();
-  }, [staff.id]);
-
-  const fetchStaffHealthData = async () => {
-    try {
-      // Note: In a real implementation, you'd have separate tables for staff clinic visits
-      // For now, we'll use the existing student tables structure
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching staff health data:', error);
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="p-6 animate-fade-in">
       <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center">
+        <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
+            size="sm"
             onClick={onBack}
-            className="mr-4 hover:bg-gray-100"
+            className="text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Staff List
+            Back to Staff
           </Button>
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 flex items-center">
-              <UserCheck className="w-8 h-8 mr-3 text-blue-600" />
-              {staff.full_name}
-            </h2>
-            <p className="text-gray-600">Staff Health Profile</p>
+            <h2 className="text-3xl font-bold text-gray-900">{staff.full_name}</h2>
+            <p className="text-gray-600">Staff ID: {staff.employee_id || 'Not assigned'}</p>
           </div>
         </div>
         <Button onClick={onEdit} className="btn-medical">
           <Edit className="w-4 h-4 mr-2" />
-          Edit Profile
+          Edit Staff
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Basic Information */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2">
           <Card className="medical-card">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <UserCheck className="w-5 h-5 mr-2" />
+                <User className="w-5 h-5 mr-2 text-blue-600" />
                 Basic Information
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center space-x-3">
-                  <Mail className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-600">Email</p>
-                    <p className="font-medium">{staff.email}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-600">Email</span>
                   </div>
+                  <p className="font-medium">{staff.email}</p>
                 </div>
 
-                <div className="flex items-center space-x-3">
-                  <Phone className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-600">Phone</p>
-                    <p className="font-medium">{staff.phone_number || 'Not provided'}</p>
+                <div>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-600">Phone</span>
                   </div>
+                  <p className="font-medium">{staff.phone_number || 'Not provided'}</p>
                 </div>
 
-                <div className="flex items-center space-x-3">
-                  <Hash className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-600">Employee ID</p>
-                    <p className="font-medium">{staff.employee_id || 'Not assigned'}</p>
+                <div>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Building className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-600">Department</span>
                   </div>
+                  <p className="font-medium">{staff.department || 'General'}</p>
                 </div>
 
-                <div className="flex items-center space-x-3">
-                  <Building className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-600">Department</p>
-                    <p className="font-medium">{staff.department || 'General'}</p>
+                <div>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <User className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-600">Role</span>
                   </div>
+                  <Badge className={staff.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}>
+                    {staff.role === 'admin' ? 'Administrator' : 'School Nurse'}
+                  </Badge>
                 </div>
               </div>
 
               <Separator />
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Role</p>
-                  <Badge className={staff.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}>
-                    {staff.role === 'admin' ? 'Administrator' : 'Nurse'}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Status</p>
-                  <Badge className={staff.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                    {staff.is_active ? 'Active' : 'Inactive'}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Medical Information */}
-          <Card className="medical-card">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Heart className="w-5 h-5 mr-2" />
-                Medical Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {staff.blood_group && (
-                <div>
-                  <p className="text-sm text-gray-600">Blood Group</p>
-                  <p className="font-medium text-red-600">{staff.blood_group}</p>
-                </div>
-              )}
-
-              {staff.medical_conditions && (
-                <div>
-                  <p className="text-sm text-gray-600">Medical Conditions</p>
-                  <p className="font-medium">{staff.medical_conditions}</p>
-                </div>
-              )}
-
-              {staff.allergies && (
-                <div>
-                  <p className="text-sm text-gray-600">Allergies</p>
-                  <p className="font-medium text-orange-600">{staff.allergies}</p>
-                </div>
-              )}
-
-              {staff.nhif_number && (
-                <div className="flex items-center space-x-3">
-                  <CreditCard className="w-5 h-5 text-gray-400" />
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Emergency Contact</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">NHIF/SHA Number</p>
-                    <p className="font-medium">{staff.nhif_number}</p>
+                    <span className="text-sm font-medium text-gray-600">Contact Name</span>
+                    <p className="font-medium">{staff.emergency_contact_name || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">Contact Phone</span>
+                    <p className="font-medium">{staff.emergency_contact_phone || 'Not provided'}</p>
                   </div>
                 </div>
-              )}
-
-              {!staff.medical_conditions && !staff.allergies && !staff.blood_group && (
-                <div className="text-center py-6 text-gray-500">
-                  <Heart className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                  <p>No medical information recorded</p>
-                </div>
-              )}
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Sidebar Information */}
-        <div className="space-y-6">
-          {/* Emergency Contact */}
+        {/* Health Information */}
+        <div>
           <Card className="medical-card">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <AlertTriangle className="w-5 h-5 mr-2" />
-                Emergency Contact
+                <Heart className="w-5 h-5 mr-2 text-red-600" />
+                Health Information
               </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Droplet className="w-4 h-4 text-red-400" />
+                  <span className="text-sm font-medium text-gray-600">Blood Group</span>
+                </div>
+                <p className="font-medium">{staff.blood_group || 'Not specified'}</p>
+              </div>
+
+              <Separator />
+
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                  <span className="text-sm font-medium text-gray-600">Allergies</span>
+                </div>
+                <p className="text-sm text-gray-700">
+                  {staff.allergies || 'No known allergies'}
+                </p>
+              </div>
+
+              <Separator />
+
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Heart className="w-4 h-4 text-red-400" />
+                  <span className="text-sm font-medium text-gray-600">Medical Conditions</span>
+                </div>
+                <p className="text-sm text-gray-700">
+                  {staff.medical_conditions || 'No medical conditions reported'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Status Card */}
+          <Card className="medical-card mt-6">
+            <CardHeader>
+              <CardTitle>Status</CardTitle>
             </CardHeader>
             <CardContent>
-              {staff.emergency_contact_name ? (
-                <div className="space-y-2">
-                  <p className="font-medium">{staff.emergency_contact_name}</p>
-                  {staff.emergency_contact_phone && (
-                    <p className="text-sm text-gray-600">{staff.emergency_contact_phone}</p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-sm">No emergency contact recorded</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Account Information */}
-          <Card className="medical-card">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Calendar className="w-5 h-5 mr-2" />
-                Account Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-600">Account Created</p>
-                <p className="font-medium">{new Date(staff.created_at).toLocaleDateString()}</p>
+              <div className="flex items-center space-x-2">
+                <div className={`w-3 h-3 rounded-full ${staff.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="font-medium">
+                  {staff.is_active ? 'Active' : 'Inactive'}
+                </span>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Last Updated</p>
-                <p className="font-medium">{new Date(staff.updated_at).toLocaleDateString()}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card className="medical-card">
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => {/* Add clinic visit functionality */}}
-              >
-                <Heart className="w-4 h-4 mr-2" />
-                Record Health Visit
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => {/* Add immunization functionality */}}
-              >
-                <Shield className="w-4 h-4 mr-2" />
-                Update Immunizations
-              </Button>
+              <p className="text-sm text-gray-600 mt-2">
+                Added on {new Date(staff.created_at).toLocaleDateString()}
+              </p>
             </CardContent>
           </Card>
         </div>

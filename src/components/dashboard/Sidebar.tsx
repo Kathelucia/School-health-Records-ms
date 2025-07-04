@@ -13,7 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  Activity
+  Activity,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ const navigation = [
   { name: 'Immunizations', href: '/immunizations', icon: Shield },
   { name: 'Medication Inventory', href: '/medications', icon: Pill },
   { name: 'Insurance (NHIF/SHA)', href: '/insurance', icon: CreditCard },
+  { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Bulk Upload', href: '/upload', icon: Upload },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];

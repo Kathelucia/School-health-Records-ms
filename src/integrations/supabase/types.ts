@@ -114,13 +114,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "clinic_visits_attended_by_fkey"
-            columns: ["attended_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "clinic_visits_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
@@ -173,13 +166,6 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "health_service_fees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fee_payments_staff_id_fkey"
-            columns: ["staff_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -295,13 +281,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "medication_dispensing_dispensed_by_fkey"
-            columns: ["dispensed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "medication_dispensing_medication_id_fkey"
             columns: ["medication_id"]
             isOneToOne: false
@@ -400,39 +379,24 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
-          department: string | null
-          email: string
-          employee_id: string | null
-          full_name: string
           id: string
-          is_active: boolean | null
-          phone_number: string | null
-          role: Database["public"]["Enums"]["user_role"] | null
+          role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
-          department?: string | null
-          email: string
-          employee_id?: string | null
-          full_name: string
           id: string
-          is_active?: boolean | null
-          phone_number?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null
+          role: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
-          department?: string | null
-          email?: string
-          employee_id?: string | null
-          full_name?: string
           id?: string
-          is_active?: boolean | null
-          phone_number?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
