@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,7 +58,6 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
         notes: immunization.notes || ''
       });
 
-      // Fetch student info if editing
       if (immunization.student_id) {
         fetchStudentInfo(immunization.student_id);
       }
@@ -164,6 +163,9 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
             <DialogTitle>
               {immunization ? 'Edit Immunization Record' : 'New Immunization Record'}
             </DialogTitle>
+            <DialogDescription>
+              {immunization ? 'Update the immunization record details below.' : 'Record a new immunization for a student.'}
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
