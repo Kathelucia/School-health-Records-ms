@@ -23,7 +23,6 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already logged in
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -67,6 +66,7 @@ const Auth = () => {
         email: signupData.email,
         password: signupData.password,
         options: {
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             full_name: signupData.fullName,
             role: signupData.role
@@ -76,29 +76,26 @@ const Auth = () => {
 
       if (authError) throw authError;
 
+      if (authData.user && !authData.user.email_confirmed_at) {
+        toast.success('Please check your email to confirm your account before signing in.');
+        return;
+      }
+
       if (authData.user) {
-        // Create the profile record
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([{
-            id: authData.user.id,
-            user_id: authData.user.id,
-            email: signupData.email,
-            full_name: signupData.fullName,
-            role: signupData.role
-          }]);
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-          // Don't throw here as the user was created successfully
-        }
-
         toast.success('Account created successfully!');
-        navigate('/');
+        
+        // If user is immediately confirmed, redirect
+        if (authData.session) {
+          navigate('/');
+        }
       }
     } catch (error: any) {
       console.error('Signup error:', error);
-      toast.error(error.message || 'Signup failed');
+      if (error.message?.includes('User already registered')) {
+        toast.error('An account with this email already exists. Please sign in instead.');
+      } else {
+        toast.error(error.message || 'Signup failed');
+      }
     } finally {
       setLoading(false);
     }
