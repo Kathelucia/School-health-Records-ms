@@ -29,10 +29,30 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
   const [showForm, setShowForm] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
     fetchVisits();
+    fetchUserProfile();
   }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) throw error;
+        setUserProfile(profile);
+      }
+    } catch (error: any) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   const fetchVisits = async () => {
     try {
@@ -229,6 +249,7 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
           visit={selectedVisit}
           onClose={handleFormClose}
           onSave={handleFormSave}
+          userProfile={userProfile}
         />
       )}
     </div>
