@@ -18,7 +18,7 @@ const Index = () => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        // Defer profile fetching to avoid issues
+        // Defer profile fetching to avoid deadlocks
         setTimeout(() => {
           fetchUserRole(session.user.id);
         }, 100);
@@ -111,11 +111,7 @@ const Index = () => {
     return <Auth />;
   }
 
-  return (
-    <Routes>
-      <Route path="/*" element={<Dashboard userRole={userRole} />} />
-    </Routes>
-  );
+  return <Dashboard userRole={userRole} />;
 };
 
 export default Index;

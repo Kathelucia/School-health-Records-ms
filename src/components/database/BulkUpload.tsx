@@ -57,13 +57,14 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
     }
   };
 
-  if (userRole !== 'admin') {
+  // Allow both admin and nurse to upload students
+  if (!['admin', 'nurse'].includes(userRole)) {
     return (
       <div className="p-6">
         <div className="text-center py-12">
           <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
-          <p className="text-gray-600">Only administrators can upload bulk data.</p>
+          <p className="text-gray-600">Only administrators and nurses can upload bulk data.</p>
         </div>
       </div>
     );
@@ -74,6 +75,11 @@ const BulkUpload = ({ userRole }: BulkUploadProps) => {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Bulk Database Upload</h2>
         <p className="text-gray-600">Upload student data from CSV files</p>
+        <div className="mt-2">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            {userRole === 'admin' ? 'Administrator Access' : 'Nurse Access'}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

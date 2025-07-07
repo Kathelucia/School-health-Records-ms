@@ -92,6 +92,7 @@ const Auth = () => {
         email: signupData.email.trim(),
         password: signupData.password,
         options: {
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             full_name: signupData.fullName.trim()
           }
@@ -102,11 +103,17 @@ const Auth = () => {
         console.error('Signup error:', error);
         if (error.message.includes('already registered')) {
           toast.error('This email is already registered. Please sign in instead.');
+        } else if (error.message.includes('Email not confirmed')) {
+          toast.success('Account created! Please check your email to confirm your account before signing in.');
         } else {
           toast.error(error.message);
         }
       } else if (data.user) {
-        toast.success('Account created successfully! You can now sign in.');
+        if (data.user.email_confirmed_at) {
+          toast.success('Account created successfully! You can now sign in.');
+        } else {
+          toast.success('Account created! Please check your email to confirm your account.');
+        }
         // Switch to login tab
         const loginTab = document.querySelector('[value="login"]') as HTMLElement;
         if (loginTab) loginTab.click();

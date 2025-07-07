@@ -74,9 +74,8 @@ const StudentForm = ({ student, onClose, onSave }: StudentFormProps) => {
   }, [student]);
 
   const validateStudentId = (value: string) => {
-    // Student ID should be alphanumeric (letters and numbers)
-    const studentIdPattern = /^[A-Za-z0-9]+$/;
     if (!value) return '';
+    const studentIdPattern = /^[A-Za-z0-9]+$/;
     if (!studentIdPattern.test(value)) {
       return 'Student ID must contain only letters and numbers';
     }
@@ -87,9 +86,8 @@ const StudentForm = ({ student, onClose, onSave }: StudentFormProps) => {
   };
 
   const validateAdmissionNumber = (value: string) => {
-    // Admission number should be numbers only
-    const admissionPattern = /^[0-9]+$/;
     if (!value) return '';
+    const admissionPattern = /^[0-9]+$/;
     if (!admissionPattern.test(value)) {
       return 'Admission number must contain only numbers';
     }
@@ -123,9 +121,15 @@ const StudentForm = ({ student, onClose, onSave }: StudentFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Basic validation
+    if (!formData.full_name.trim()) {
+      toast.error('Full name is required');
+      return;
+    }
+    
     // Validate before submission
-    const studentIdError = validateStudentId(formData.student_id);
-    const admissionNumberError = validateAdmissionNumber(formData.admission_number);
+    const studentIdError = formData.student_id ? validateStudentId(formData.student_id) : '';
+    const admissionNumberError = formData.admission_number ? validateAdmissionNumber(formData.admission_number) : '';
     
     if (studentIdError || admissionNumberError) {
       setValidationErrors({
@@ -139,11 +143,33 @@ const StudentForm = ({ student, onClose, onSave }: StudentFormProps) => {
     setLoading(true);
 
     try {
+      // Prepare data for submission, removing empty strings
+      const submitData = {
+        full_name: formData.full_name.trim(),
+        student_id: formData.student_id.trim() || null,
+        admission_number: formData.admission_number.trim() || null,
+        date_of_birth: formData.date_of_birth || null,
+        gender: formData.gender || null,
+        form_level: formData.form_level || null,
+        stream: formData.stream.trim() || null,
+        blood_group: formData.blood_group || null,
+        allergies: formData.allergies.trim() || null,
+        chronic_conditions: formData.chronic_conditions.trim() || null,
+        parent_guardian_name: formData.parent_guardian_name.trim() || null,
+        parent_guardian_phone: formData.parent_guardian_phone.trim() || null,
+        county: formData.county || null,
+        sub_county: formData.sub_county.trim() || null,
+        ward: formData.ward.trim() || null,
+        village: formData.village.trim() || null,
+        admission_date: formData.admission_date || null,
+        is_active: formData.is_active
+      };
+
       if (student) {
         // Update existing student
         const { error } = await supabase
           .from('students')
-          .update(formData)
+          .update(submitData)
           .eq('id', student.id);
 
         if (error) throw error;
@@ -152,16 +178,21 @@ const StudentForm = ({ student, onClose, onSave }: StudentFormProps) => {
         // Create new student
         const { error } = await supabase
           .from('students')
-          .insert([formData]);
+          .insert([submitData]);
 
         if (error) throw error;
         toast.success('Student profile created successfully');
       }
 
       onSave();
+      onClose();
     } catch (error: any) {
       console.error('Error saving student:', error);
-      toast.error(error.message || 'Error saving student profile');
+      if (error.code === '23505') {
+        toast.error('A student with this ID or admission number already exists');
+      } else {
+        toast.error(error.message || 'Error saving student profile');
+      }
     } finally {
       setLoading(false);
     }
@@ -273,7 +304,7 @@ const StudentForm = ({ student, onClose, onSave }: StudentFormProps) => {
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="student_id">Student ID (Letters & Numbers)</Label>
+                    <Label htmlFor="student_id">Student ID (Optional - Letters & Numbers)</Label>
                     <Input
                       id="student_id"
                       value={formData.student_id}
@@ -287,7 +318,7 @@ const StudentForm = ({ student, onClose, onSave }: StudentFormProps) => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="admission_number">Admission Number (Numbers Only)</Label>
+                    <Label htmlFor="admission_number">Admission Number (Optional - Numbers Only)</Label>
                     <Input
                       id="admission_number"
                       value={formData.admission_number}
