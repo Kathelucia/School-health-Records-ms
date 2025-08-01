@@ -119,6 +119,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "clinic_visits_attended_by_fkey"
+            columns: ["attended_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "clinic_visits_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
@@ -389,10 +396,14 @@ export type Database = {
           employee_id: string | null
           full_name: string | null
           id: string
+          is_active: boolean | null
+          nhif_number: string | null
           phone_number: string | null
           role: Database["public"]["Enums"]["user_role"]
+          sha_number: string | null
           updated_at: string | null
           user_id: string | null
+          user_role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
           created_at?: string | null
@@ -401,10 +412,14 @@ export type Database = {
           employee_id?: string | null
           full_name?: string | null
           id: string
+          is_active?: boolean | null
+          nhif_number?: string | null
           phone_number?: string | null
           role: Database["public"]["Enums"]["user_role"]
+          sha_number?: string | null
           updated_at?: string | null
           user_id?: string | null
+          user_role?: Database["public"]["Enums"]["user_role"]
         }
         Update: {
           created_at?: string | null
@@ -413,10 +428,47 @@ export type Database = {
           employee_id?: string | null
           full_name?: string | null
           id?: string
+          is_active?: boolean | null
+          nhif_number?: string | null
           phone_number?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          sha_number?: string | null
           updated_at?: string | null
           user_id?: string | null
+          user_role?: Database["public"]["Enums"]["user_role"]
+        }
+        Relationships: []
+      }
+      staff: {
+        Row: {
+          created_at: string | null
+          department: string | null
+          full_name: string
+          id: string
+          is_active: boolean | null
+          position: string | null
+          staff_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          department?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean | null
+          position?: string | null
+          staff_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          department?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean | null
+          position?: string | null
+          staff_id?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -483,8 +535,10 @@ export type Database = {
           gender: string | null
           id: string
           is_active: boolean | null
+          nhif_number: string | null
           parent_guardian_name: string | null
           parent_guardian_phone: string | null
+          sha_number: string | null
           stream: string | null
           student_id: string | null
           sub_county: string | null
@@ -507,8 +561,10 @@ export type Database = {
           gender?: string | null
           id?: string
           is_active?: boolean | null
+          nhif_number?: string | null
           parent_guardian_name?: string | null
           parent_guardian_phone?: string | null
+          sha_number?: string | null
           stream?: string | null
           student_id?: string | null
           sub_county?: string | null
@@ -531,8 +587,10 @@ export type Database = {
           gender?: string | null
           id?: string
           is_active?: boolean | null
+          nhif_number?: string | null
           parent_guardian_name?: string | null
           parent_guardian_phone?: string | null
+          sha_number?: string | null
           stream?: string | null
           student_id?: string | null
           sub_county?: string | null
@@ -585,6 +643,7 @@ export type Database = {
     }
     Enums: {
       education_level: "form_1" | "form_2" | "form_3" | "form_4"
+      gender: "male" | "female" | "other"
       school_term: "term_1" | "term_2" | "term_3"
       user_role: "admin" | "nurse"
     }
@@ -715,6 +774,7 @@ export const Constants = {
   public: {
     Enums: {
       education_level: ["form_1", "form_2", "form_3", "form_4"],
+      gender: ["male", "female", "other"],
       school_term: ["term_1", "term_2", "term_3"],
       user_role: ["admin", "nurse"],
     },
