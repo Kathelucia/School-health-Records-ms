@@ -5,11 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Calendar, User, Stethoscope } from 'lucide-react';
+import { Calendar, User, Stethoscope, FileText, Clock } from 'lucide-react';
 import StudentSelector from '@/components/students/StudentSelector';
+import VisitTypeSelector from './VisitTypeSelector';
+import VitalSignsForm from './VitalSignsForm';
+import { VisitFormData } from './types';
 
 interface ClinicVisitFormProps {
   visit?: any;
@@ -23,7 +26,7 @@ const ClinicVisitForm = ({ visit, student, onClose, onSave, userProfile }: Clini
   const [selectedStudent, setSelectedStudent] = useState<any>(student || null);
   const [showStudentSelector, setShowStudentSelector] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(userProfile || null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<VisitFormData>({
     student_id: student?.id || '',
     visit_date: new Date().toISOString().split('T')[0],
     visit_type: 'routine',
@@ -132,6 +135,11 @@ const ClinicVisitForm = ({ visit, student, onClose, onSave, userProfile }: Clini
       return;
     }
 
+    if (!formData.symptoms && !formData.diagnosis) {
+      toast.error('Please provide either symptoms or diagnosis');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -175,241 +183,225 @@ const ClinicVisitForm = ({ visit, student, onClose, onSave, userProfile }: Clini
   return (
     <>
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
           <DialogHeader className="space-y-3 pb-6">
             <DialogTitle className="flex items-center text-2xl font-bold text-gray-900">
               <Stethoscope className="w-7 h-7 mr-3 text-blue-600" />
-              {visit ? 'Edit Clinic Visit' : 'New Clinic Visit'}
+              {visit ? 'Edit Clinic Visit' : 'New Clinic Visit Record'}
             </DialogTitle>
+            <p className="text-gray-600">
+              Complete medical documentation for student health assessment
+            </p>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Student Selection */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <User className="w-5 h-5 mr-2 text-blue-600" />
-                Student Information
-              </h3>
-              {selectedStudent ? (
-                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">{selectedStudent.full_name}</h4>
-                      <div className="text-sm text-gray-600">
-                        <span>ID: {selectedStudent.student_id}</span>
-                        {selectedStudent.admission_number && (
-                          <span className="ml-4">Adm: {selectedStudent.admission_number}</span>
-                        )}
-                        <span className="ml-4">{selectedStudent.form_level?.replace('_', ' ')} {selectedStudent.stream}</span>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
+                  <User className="w-5 h-5 mr-2 text-blue-600" />
+                  Patient Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {selectedStudent ? (
+                  <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <User className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{selectedStudent.full_name}</h4>
+                        <div className="text-sm text-gray-600 space-x-4">
+                          <span>Student ID: {selectedStudent.student_id}</span>
+                          {selectedStudent.admission_number && (
+                            <span>Admission: {selectedStudent.admission_number}</span>
+                          )}
+                          <span className="capitalize">
+                            {selectedStudent.form_level?.replace('_', ' ')} {selectedStudent.stream}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowStudentSelector(true)}
+                    >
+                      Change Patient
+                    </Button>
                   </div>
+                ) : (
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setShowStudentSelector(true)}
+                    className="w-full h-20 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50"
                   >
-                    Change Student
+                    <div className="text-center">
+                      <User className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                      <span className="text-gray-600">Select Patient</span>
+                    </div>
                   </Button>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowStudentSelector(true)}
-                  className="w-full h-16 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50"
-                >
-                  <User className="w-5 h-5 mr-2" />
-                  Select Student
-                </Button>
-              )}
-            </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Visit Details */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <Calendar className="w-5 h-5 mr-2 text-green-600" />
-                Visit Details
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Calendar className="w-5 h-5 mr-2 text-green-600" />
+                  Visit Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="visit_date" className="text-sm font-medium">
+                      Visit Date & Time *
+                    </Label>
+                    <Input
+                      id="visit_date"
+                      type="date"
+                      value={formData.visit_date}
+                      onChange={(e) => setFormData({ ...formData, visit_date: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Visit Type *</Label>
+                    <VisitTypeSelector
+                      value={formData.visit_type}
+                      onChange={(value) => setFormData({ ...formData, visit_type: value })}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Clinical Assessment */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-purple-600" />
+                  Clinical Assessment
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="visit_date">Visit Date *</Label>
-                  <Input
-                    id="visit_date"
-                    type="date"
-                    value={formData.visit_date}
-                    onChange={(e) => setFormData({ ...formData, visit_date: e.target.value })}
-                    required
+                  <Label htmlFor="symptoms" className="text-sm font-medium">
+                    Chief Complaint / Presenting Symptoms
+                  </Label>
+                  <Textarea
+                    id="symptoms"
+                    value={formData.symptoms}
+                    onChange={(e) => setFormData({ ...formData, symptoms: e.target.value })}
+                    rows={3}
+                    placeholder="Describe the primary reason for the visit and presenting symptoms..."
+                    className="resize-none"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="visit_type">Visit Type</Label>
-                  <Select value={formData.visit_type} onValueChange={(value) => setFormData({ ...formData, visit_type: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="routine">Routine Check-up</SelectItem>
-                      <SelectItem value="sick_visit">Sick Visit</SelectItem>
-                      <SelectItem value="emergency">Emergency</SelectItem>
-                      <SelectItem value="follow_up">Follow-up</SelectItem>
-                      <SelectItem value="screening">Health Screening</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="diagnosis" className="text-sm font-medium">
+                    Clinical Diagnosis / Assessment
+                  </Label>
+                  <Textarea
+                    id="diagnosis"
+                    value={formData.diagnosis}
+                    onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
+                    rows={2}
+                    placeholder="Medical diagnosis, assessment, or clinical impression..."
+                    className="resize-none"
+                  />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="symptoms">Symptoms/Chief Complaint</Label>
-                <Textarea
-                  id="symptoms"
-                  value={formData.symptoms}
-                  onChange={(e) => setFormData({ ...formData, symptoms: e.target.value })}
-                  rows={3}
-                  placeholder="Describe the symptoms or reason for visit..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="diagnosis">Diagnosis</Label>
-                <Textarea
-                  id="diagnosis"
-                  value={formData.diagnosis}
-                  onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
-                  rows={2}
-                  placeholder="Medical diagnosis or assessment..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="treatment_given">Treatment Given</Label>
-                <Textarea
-                  id="treatment_given"
-                  value={formData.treatment_given}
-                  onChange={(e) => setFormData({ ...formData, treatment_given: e.target.value })}
-                  rows={3}
-                  placeholder="Treatment provided, medications dispensed..."
-                />
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="treatment_given" className="text-sm font-medium">
+                    Treatment Administered
+                  </Label>
+                  <Textarea
+                    id="treatment_given"
+                    value={formData.treatment_given}
+                    onChange={(e) => setFormData({ ...formData, treatment_given: e.target.value })}
+                    rows={3}
+                    placeholder="Treatment provided, medications dispensed, procedures performed..."
+                    className="resize-none"
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Vital Signs */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900">Vital Signs</h3>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="temperature">Temperature (°C)</Label>
-                  <Input
-                    id="temperature"
-                    type="number"
-                    step="0.1"
-                    value={formData.temperature}
-                    onChange={(e) => setFormData({ ...formData, temperature: e.target.value })}
-                    placeholder="36.5"
+            <VitalSignsForm formData={formData} setFormData={setFormData} />
+
+            {/* Follow-up Care */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Clock className="w-5 h-5 mr-2 text-amber-600" />
+                  Follow-up Care Plan
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="follow_up_required"
+                    checked={formData.follow_up_required}
+                    onChange={(e) => setFormData({ ...formData, follow_up_required: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                   />
+                  <Label htmlFor="follow_up_required" className="text-sm font-medium">
+                    Follow-up visit required
+                  </Label>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="blood_pressure">Blood Pressure</Label>
-                  <Input
-                    id="blood_pressure"
-                    value={formData.blood_pressure}
-                    onChange={(e) => setFormData({ ...formData, blood_pressure: e.target.value })}
-                    placeholder="120/80"
-                  />
-                </div>
+                {formData.follow_up_required && (
+                  <div className="ml-7 space-y-2">
+                    <Label htmlFor="follow_up_date" className="text-sm font-medium">
+                      Scheduled Follow-up Date
+                    </Label>
+                    <Input
+                      id="follow_up_date"
+                      type="date"
+                      value={formData.follow_up_date}
+                      onChange={(e) => setFormData({ ...formData, follow_up_date: e.target.value })}
+                      className="max-w-xs"
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-                <div className="space-y-2">
-                  <Label htmlFor="pulse_rate">Pulse Rate (bpm)</Label>
-                  <Input
-                    id="pulse_rate"
-                    type="number"
-                    value={formData.pulse_rate}
-                    onChange={(e) => setFormData({ ...formData, pulse_rate: e.target.value })}
-                    placeholder="72"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="weight">Weight (kg)</Label>
-                  <Input
-                    id="weight"
-                    type="number"
-                    step="0.1"
-                    value={formData.weight}
-                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                    placeholder="65.5"
-                  />
-                </div>
-              </div>
-
-              <div className="w-full md:w-1/4">
-                <div className="space-y-2">
-                  <Label htmlFor="height">Height (cm)</Label>
-                  <Input
-                    id="height"
-                    type="number"
-                    step="0.1"
-                    value={formData.height}
-                    onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                    placeholder="170.5"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Follow-up */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Follow-up</h3>
-              
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="follow_up_required"
-                  checked={formData.follow_up_required}
-                  onChange={(e) => setFormData({ ...formData, follow_up_required: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 rounded"
+            {/* Additional Notes */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-gray-900">
+                  Additional Clinical Notes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={3}
+                  placeholder="Additional observations, patient instructions, referral notes..."
+                  className="resize-none"
                 />
-                <Label htmlFor="follow_up_required">Follow-up visit required</Label>
-              </div>
+              </CardContent>
+            </Card>
 
-              {formData.follow_up_required && (
-                <div className="space-y-2">
-                  <Label htmlFor="follow_up_date">Follow-up Date</Label>
-                  <Input
-                    id="follow_up_date"
-                    type="date"
-                    value={formData.follow_up_date}
-                    onChange={(e) => setFormData({ ...formData, follow_up_date: e.target.value })}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label htmlFor="notes">Additional Notes</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={3}
-                placeholder="Any additional observations or notes..."
-              />
-            </div>
-
+            {/* Form Actions */}
             <div className="flex justify-end space-x-3 pt-6 border-t">
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? 'Saving...' : visit ? 'Update Visit' : 'Record Visit'}
+              <Button type="submit" disabled={saving} className="min-w-32">
+                {saving ? 'Saving...' : visit ? 'Update Record' : 'Save Visit Record'}
               </Button>
             </div>
           </form>
