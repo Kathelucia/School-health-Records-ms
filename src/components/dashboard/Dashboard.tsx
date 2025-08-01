@@ -20,10 +20,14 @@ import MedicalHeader from './MedicalHeader';
 import MedicalSidebar from './MedicalSidebar';
 import MedicalDashboard from './MedicalDashboard';
 
-const Dashboard = () => {
+interface DashboardProps {
+  userRole: string;
+}
+
+const Dashboard = ({ userRole: propUserRole }: DashboardProps) => {
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
-  const [userRole, setUserRole] = useState('nurse');
+  const [userRole, setUserRole] = useState(propUserRole || 'nurse');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,6 +48,12 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (propUserRole) {
+      setUserRole(propUserRole);
+    }
+  }, [propUserRole]);
+
   const fetchUserProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -62,7 +72,7 @@ const Dashboard = () => {
           toast.error('Error loading user profile');
         } else if (profile) {
           setUserProfile(profile);
-          setUserRole(profile.user_role || profile.role || 'nurse');
+          setUserRole(profile.user_role || profile.role || propUserRole || 'nurse');
         }
       }
     } catch (error) {
