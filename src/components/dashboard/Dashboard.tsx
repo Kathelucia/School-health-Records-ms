@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -29,6 +29,76 @@ const Dashboard = ({ userRole: propUserRole }: DashboardProps) => {
   const [userProfile, setUserProfile] = useState(null);
   const [userRole, setUserRole] = useState(propUserRole || 'nurse');
   const [loading, setLoading] = useState(true);
+  const [activeView, setActiveView] = useState('dashboard');
+  
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Update activeView based on current route
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/dashboard' || path === '/') {
+      setActiveView('dashboard');
+    } else if (path.includes('/students')) {
+      setActiveView('students');
+    } else if (path.includes('/clinic')) {
+      setActiveView('clinic');
+    } else if (path.includes('/medications')) {
+      setActiveView('medications');
+    } else if (path.includes('/immunizations')) {
+      setActiveView('immunizations');
+    } else if (path.includes('/reports')) {
+      setActiveView('reports');
+    } else if (path.includes('/staff')) {
+      setActiveView('staff');
+    } else if (path.includes('/upload')) {
+      setActiveView('bulk-upload');
+    } else if (path.includes('/settings')) {
+      setActiveView('settings');
+    } else if (path.includes('/notifications')) {
+      setActiveView('notifications');
+    }
+  }, [location.pathname]);
+
+  const handleViewChange = (view: string) => {
+    setActiveView(view);
+    
+    // Navigate to the corresponding route
+    switch (view) {
+      case 'dashboard':
+        navigate('/dashboard');
+        break;
+      case 'students':
+        navigate('/dashboard/students');
+        break;
+      case 'clinic':
+        navigate('/dashboard/clinic');
+        break;
+      case 'medications':
+        navigate('/dashboard/medications');
+        break;
+      case 'immunizations':
+        navigate('/dashboard/immunizations');
+        break;
+      case 'reports':
+        navigate('/dashboard/reports');
+        break;
+      case 'staff':
+        navigate('/dashboard/staff');
+        break;
+      case 'bulk-upload':
+        navigate('/dashboard/upload');
+        break;
+      case 'settings':
+        navigate('/dashboard/settings');
+        break;
+      case 'notifications':
+        // For now, just set active view without navigation
+        break;
+      default:
+        navigate('/dashboard');
+    }
+  };
 
   useEffect(() => {
     fetchUserProfile();
@@ -102,7 +172,11 @@ const Dashboard = ({ userRole: propUserRole }: DashboardProps) => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex w-full">
-      <MedicalSidebar userRole={userRole} />
+      <MedicalSidebar 
+        userRole={userRole} 
+        activeView={activeView}
+        onViewChange={handleViewChange}
+      />
       
       <div className="flex-1 flex flex-col">
         <MedicalHeader userRole={userRole} userProfile={userProfile} />
