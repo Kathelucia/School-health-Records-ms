@@ -1,11 +1,10 @@
 
-import Dashboard from '@/components/dashboard/Dashboard';
+import NotificationCenter from '@/components/notifications/NotificationCenter';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const Index = () => {
+const NotificationsPage = () => {
   const [userRole, setUserRole] = useState('nurse');
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchUserRole();
@@ -27,20 +26,10 @@ const Index = () => {
       }
     } catch (error) {
       console.error('Error fetching user role:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  return <Dashboard userRole={userRole} />;
+  return <NotificationCenter userRole={userRole} />;
 };
 
-export default Index;
+export default NotificationsPage;

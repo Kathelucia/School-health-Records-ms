@@ -1,201 +1,148 @@
-
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-
-// Import existing components
-import StudentProfiles from '@/components/students/StudentProfiles';
-import StaffProfiles from '@/components/staff/StaffProfiles';
-import ClinicVisits from '@/components/clinic/ClinicVisits';
-import ImmunizationManagement from '@/components/immunizations/ImmunizationManagement';
-import MedicationInventorySystem from '@/components/medication/MedicationInventorySystem';
-import InsuranceManagement from '@/components/insurance/InsuranceManagement';
-import Reports from '@/components/reports/Reports';
-import BulkUpload from '@/components/database/BulkUpload';
-import Settings from '@/components/settings/Settings';
-import NotificationCenter from '@/components/notifications/NotificationCenter';
-
-// Import new medical-focused components
 import MedicalHeader from './MedicalHeader';
 import MedicalSidebar from './MedicalSidebar';
-import MedicalDashboard from './MedicalDashboard';
+import DashboardHome from './DashboardHome';
+import StudentProfiles from '@/components/students/StudentProfiles';
+import ClinicVisits from '@/components/clinic/ClinicVisits';
+import MedicationInventorySystem from '@/components/medication/MedicationInventorySystem';
+import ImmunizationManagement from '@/components/immunizations/ImmunizationManagement';
+import InsuranceManagement from '@/components/insurance/InsuranceManagement';
+import Reports from '@/components/reports/Reports';
+import ReportDownloader from '@/components/reports/ReportDownloader';
+import NotificationCenter from '@/components/notifications/NotificationCenter';
+import Settings from '@/components/settings/Settings';
+import StaffManagement from '@/components/settings/StaffManagement';
+import ContactAdmin from '@/components/settings/ContactAdmin';
+import StaffProfiles from '@/components/staff/StaffProfiles';
+import BulkUpload from '@/components/database/BulkUpload';
+import AuditLogs from '@/components/audit/AuditLogs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface DashboardProps {
   userRole: string;
 }
 
-const Dashboard = ({ userRole: propUserRole }: DashboardProps) => {
-  const [user, setUser] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [userRole, setUserRole] = useState(propUserRole || 'nurse');
-  const [loading, setLoading] = useState(true);
+const Dashboard = ({ userRole }: DashboardProps) => {
   const [activeView, setActiveView] = useState('dashboard');
-  
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  // Update activeView based on current route
-  useEffect(() => {
-    const path = location.pathname;
-    if (path === '/dashboard' || path === '/' || path === '') {
-      setActiveView('dashboard');
-    } else if (path.includes('/students')) {
-      setActiveView('students');
-    } else if (path.includes('/clinic')) {
-      setActiveView('clinic');
-    } else if (path.includes('/medications')) {
-      setActiveView('medications');
-    } else if (path.includes('/immunizations')) {
-      setActiveView('immunizations');
-    } else if (path.includes('/reports')) {
-      setActiveView('reports');
-    } else if (path.includes('/staff')) {
-      setActiveView('staff');
-    } else if (path.includes('/upload')) {
-      setActiveView('bulk-upload');
-    } else if (path.includes('/settings')) {
-      setActiveView('settings');
-    } else if (path.includes('/notifications')) {
-      setActiveView('notifications');
-    }
-  }, [location.pathname]);
-
-  const handleViewChange = (view: string) => {
-    setActiveView(view);
-    
-    // Navigate to the corresponding route
-    switch (view) {
-      case 'dashboard':
-        navigate('/');
-        break;
-      case 'students':
-        navigate('/students');
-        break;
-      case 'clinic':
-        navigate('/clinic');
-        break;
-      case 'medications':
-        navigate('/medications');
-        break;
-      case 'immunizations':
-        navigate('/immunizations');
-        break;
-      case 'reports':
-        navigate('/reports');
-        break;
-      case 'staff':
-        navigate('/staff');
-        break;
-      case 'bulk-upload':
-        navigate('/upload');
-        break;
-      case 'settings':
-        navigate('/settings');
-        break;
-      case 'notifications':
-        navigate('/notifications');
-        break;
-      default:
-        navigate('/');
-    }
-  };
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
     fetchUserProfile();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          setUser(session.user);
-          await fetchUserProfile();
-        } else {
-          setUser(null);
-          setUserProfile(null);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (propUserRole) {
-      setUserRole(propUserRole);
-    }
-  }, [propUserRole]);
 
   const fetchUserProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
       if (user) {
-        setUser(user);
-        
-        const { data: profile, error } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();
-
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error fetching profile:', error);
-          toast.error('Error loading user profile');
-        } else if (profile) {
-          setUserProfile(profile);
-          setUserRole(profile.user_role || profile.role || propUserRole || 'nurse');
-        }
+        setUserProfile(profile);
       }
     } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching user profile:', error);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+  const renderContent = () => {
+    switch (activeView) {
+      case 'dashboard':
+        return <DashboardHome userRole={userRole} />;
+      
+      case 'students':
+        return <StudentProfiles userRole={userRole} />;
+      
+      case 'clinic':
+        return <ClinicVisits userRole={userRole} />;
+      
+      case 'medications':
+        return <MedicationInventorySystem userRole={userRole} />;
+      
+      case 'immunizations':
+        return <ImmunizationManagement userRole={userRole} />;
+      
+      case 'insurance':
+        return <InsuranceManagement userRole={userRole} />;
+      
+      case 'staff':
+        return <StaffProfiles userRole={userRole} />;
+      
+      case 'reports':
+        return (
+          <div className="p-6">
+            <Tabs defaultValue="analytics" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="analytics">Analytics & Reports</TabsTrigger>
+                <TabsTrigger value="downloads">Download Reports</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="analytics">
+                <Reports userRole={userRole} />
+              </TabsContent>
+              
+              <TabsContent value="downloads">
+                <ReportDownloader userRole={userRole} />
+              </TabsContent>
+            </Tabs>
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Loading Medical System</h2>
-          <p className="text-gray-600">Initializing health records management...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
+        );
+      
+      case 'notifications':
+        return <NotificationCenter userRole={userRole} />;
+      
+      case 'bulk-upload':
+        return <BulkUpload />;
+      
+      case 'audit':
+        return <AuditLogs userRole={userRole} />;
+      
+      case 'settings':
+        const isAdmin = userRole === 'admin';
+        return (
+          <div className="p-6">
+            <Tabs defaultValue="profile" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="profile">Profile Settings</TabsTrigger>
+                {isAdmin && <TabsTrigger value="staff">Staff Management</TabsTrigger>}
+                <TabsTrigger value="contact">Contact Admin</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="profile">
+                <Settings userRole={userRole} onProfileUpdate={fetchUserProfile} />
+              </TabsContent>
+              
+              {isAdmin && (
+                <TabsContent value="staff">
+                  <StaffManagement />
+                </TabsContent>
+              )}
+              
+              <TabsContent value="contact">
+                <ContactAdmin userProfile={userProfile} />
+              </TabsContent>
+            </Tabs>
+          </div>
+        );
+      
+      default:
+        return <DashboardHome userRole={userRole} />;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex w-full">
-      <MedicalSidebar 
-        userRole={userRole} 
-        activeView={activeView}
-        onViewChange={handleViewChange}
-      />
-      
-      <div className="flex-1 flex flex-col">
-        <MedicalHeader userRole={userRole} userProfile={userProfile} />
-        
+    <div className="min-h-screen bg-gray-50">
+      <MedicalHeader userRole={userRole} userProfile={userProfile} />
+      <div className="flex">
+        <MedicalSidebar 
+          userRole={userRole} 
+          activeView={activeView}
+          onViewChange={setActiveView}
+        />
         <main className="flex-1 overflow-auto">
-          <Routes>
-            <Route path="/" element={<MedicalDashboard userRole={userRole} />} />
-            <Route path="/students/*" element={<StudentProfiles userRole={userRole} />} />
-            <Route path="/staff/*" element={<StaffProfiles userRole={userRole} />} />
-            <Route path="/clinic/*" element={<ClinicVisits userRole={userRole} />} />
-            <Route path="/immunizations/*" element={<ImmunizationManagement userRole={userRole} />} />
-            <Route path="/medications/*" element={<MedicationInventorySystem userRole={userRole} />} />
-            <Route path="/insurance/*" element={<InsuranceManagement userRole={userRole} />} />
-            <Route path="/reports/*" element={<Reports userRole={userRole} />} />
-            <Route path="/upload/*" element={<BulkUpload userRole={userRole} />} />
-            <Route path="/settings/*" element={<Settings userRole={userRole} />} />
-            <Route path="/notifications/*" element={<NotificationCenter userRole={userRole} />} />
-          </Routes>
+          {renderContent()}
         </main>
       </div>
     </div>

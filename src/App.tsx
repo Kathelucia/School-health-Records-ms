@@ -1,44 +1,53 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Students from "./pages/Students";
+import Clinic from "./pages/Clinic";
+import Medications from "./pages/Medications";
+import Immunizations from "./pages/Immunizations";
+import Insurance from "./pages/Insurance";
+import ReportsPage from "./pages/Reports";
+import SettingsPage from "./pages/Settings";
+import NotificationsPage from "./pages/Notifications";
+import BulkUploadPage from "./pages/BulkUpload";
+import Staff from "./pages/Staff";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function App() {
-  const [isInitialized, setIsInitialized] = useState(false);
+const App = () => {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize the app
-    const initializeApp = async () => {
-      try {
-        // Check if we have a valid session
-        await supabase.auth.getSession();
-        setIsInitialized(true);
-      } catch (error) {
-        console.error('Error initializing app:', error);
-        setIsInitialized(true);
-      }
-    };
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
 
-    initializeApp();
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  if (!isInitialized) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
         <div className="text-center">
-          <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">School Health Records</h2>
-          <p className="text-gray-600">Loading system...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">School Health Records System</h2>
+          <p className="text-gray-500">Loading your medical dashboard...</p>
         </div>
       </div>
     );
@@ -50,29 +59,29 @@ function App() {
         <Toaster />
         <BrowserRouter>
           <Routes>
-            {/* Main dashboard routes - all handled by Index/Dashboard */}
-            <Route path="/" element={<Index />} />
-            <Route path="/students/*" element={<Index />} />
-            <Route path="/clinic/*" element={<Index />} />
-            <Route path="/medications/*" element={<Index />} />
-            <Route path="/immunizations/*" element={<Index />} />
-            <Route path="/reports/*" element={<Index />} />
-            <Route path="/staff/*" element={<Index />} />
-            <Route path="/upload/*" element={<Index />} />
-            <Route path="/settings/*" element={<Index />} />
-            <Route path="/notifications/*" element={<Index />} />
-            
-            {/* Auth route */}
-            <Route path="/auth" element={<Auth />} />
-            
-            {/* 404 route */}
-            <Route path="/404" element={<NotFound />} />
-            <Route path="*" element={<Navigate to="/404" replace />} />
+            {!session ? (
+              <Route path="*" element={<Auth />} />
+            ) : (
+              <>
+                <Route path="/" element={<Index />} />
+                <Route path="/students" element={<Students />} />
+                <Route path="/clinic" element={<Clinic />} />
+                <Route path="/medications" element={<Medications />} />
+                <Route path="/immunizations" element={<Immunizations />} />
+                <Route path="/insurance" element={<Insurance />} />
+                <Route path="/staff" element={<Staff />} />
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/bulk-upload" element={<BulkUploadPage />} />
+                <Route path="*" element={<NotFound />} />
+              </>
+            )}
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );
-}
+};
 
 export default App;
