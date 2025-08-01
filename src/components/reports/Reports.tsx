@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DatePickerWithRange } from '@/components/ui/date-picker';
 import { 
   BarChart3, 
   FileText, 
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { DateRange } from 'react-day-picker';
 
 interface ReportsProps {
   userRole: string;
@@ -23,13 +24,12 @@ interface ReportsProps {
 
 const Reports = ({ userRole }: ReportsProps) => {
   const [reportType, setReportType] = useState('health-trends');
-  const [dateFrom, setDateFrom] = useState<Date>();
-  const [dateTo, setDateTo] = useState<Date>();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
 
   const generateReport = async () => {
-    if (!dateFrom || !dateTo) {
+    if (!dateRange?.from || !dateRange?.to) {
       toast.error('Please select both start and end dates');
       return;
     }
@@ -76,8 +76,8 @@ const Reports = ({ userRole }: ReportsProps) => {
           stream
         )
       `)
-      .gte('visit_date', dateFrom?.toISOString())
-      .lte('visit_date', dateTo?.toISOString());
+      .gte('visit_date', dateRange?.from?.toISOString())
+      .lte('visit_date', dateRange?.to?.toISOString());
 
     if (error) throw error;
 
@@ -179,8 +179,8 @@ const Reports = ({ userRole }: ReportsProps) => {
           stream
         )
       `)
-      .gte('visit_date', dateFrom?.toISOString())
-      .lte('visit_date', dateTo?.toISOString());
+      .gte('visit_date', dateRange?.from?.toISOString())
+      .lte('visit_date', dateRange?.to?.toISOString());
 
     if (error) throw error;
 
@@ -264,7 +264,7 @@ const Reports = ({ userRole }: ReportsProps) => {
           <CardTitle>Generate Report</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <Select value={reportType} onValueChange={setReportType}>
               <SelectTrigger>
                 <SelectValue placeholder="Select report type" />
@@ -277,16 +277,10 @@ const Reports = ({ userRole }: ReportsProps) => {
               </SelectContent>
             </Select>
             
-            <DatePicker
-              date={dateFrom}
-              onDateChange={setDateFrom}
-              placeholder="From date"
-            />
-            
-            <DatePicker
-              date={dateTo}
-              onDateChange={setDateTo}
-              placeholder="To date"
+            <DatePickerWithRange
+              date={dateRange}
+              onDateChange={setDateRange}
+              className="w-full"
             />
             
             <Button 
