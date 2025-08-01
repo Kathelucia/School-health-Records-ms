@@ -14,6 +14,7 @@ import InsuranceManagement from '@/components/insurance/InsuranceManagement';
 import Reports from '@/components/reports/Reports';
 import BulkUpload from '@/components/database/BulkUpload';
 import Settings from '@/components/settings/Settings';
+import NotificationCenter from '@/components/notifications/NotificationCenter';
 
 // Import new medical-focused components
 import MedicalHeader from './MedicalHeader';
@@ -37,7 +38,7 @@ const Dashboard = ({ userRole: propUserRole }: DashboardProps) => {
   // Update activeView based on current route
   useEffect(() => {
     const path = location.pathname;
-    if (path === '/dashboard' || path === '/') {
+    if (path === '/dashboard' || path === '/' || path === '') {
       setActiveView('dashboard');
     } else if (path.includes('/students')) {
       setActiveView('students');
@@ -66,37 +67,37 @@ const Dashboard = ({ userRole: propUserRole }: DashboardProps) => {
     // Navigate to the corresponding route
     switch (view) {
       case 'dashboard':
-        navigate('/dashboard');
+        navigate('/');
         break;
       case 'students':
-        navigate('/dashboard/students');
+        navigate('/students');
         break;
       case 'clinic':
-        navigate('/dashboard/clinic');
+        navigate('/clinic');
         break;
       case 'medications':
-        navigate('/dashboard/medications');
+        navigate('/medications');
         break;
       case 'immunizations':
-        navigate('/dashboard/immunizations');
+        navigate('/immunizations');
         break;
       case 'reports':
-        navigate('/dashboard/reports');
+        navigate('/reports');
         break;
       case 'staff':
-        navigate('/dashboard/staff');
+        navigate('/staff');
         break;
       case 'bulk-upload':
-        navigate('/dashboard/upload');
+        navigate('/upload');
         break;
       case 'settings':
-        navigate('/dashboard/settings');
+        navigate('/settings');
         break;
       case 'notifications':
-        // For now, just set active view without navigation
+        navigate('/notifications');
         break;
       default:
-        navigate('/dashboard');
+        navigate('/');
     }
   };
 
@@ -193,6 +194,7 @@ const Dashboard = ({ userRole: propUserRole }: DashboardProps) => {
             <Route path="/reports/*" element={<Reports userRole={userRole} />} />
             <Route path="/upload/*" element={<BulkUpload userRole={userRole} />} />
             <Route path="/settings/*" element={<Settings userRole={userRole} />} />
+            <Route path="/notifications/*" element={<NotificationCenter userRole={userRole} />} />
           </Routes>
         </main>
       </div>

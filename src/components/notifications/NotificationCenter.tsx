@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bell, Check, AlertTriangle, Info, CheckCircle, X } from 'lucide-react';
+import { Bell, CheckCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -13,7 +14,6 @@ interface NotificationCenterProps {
 const NotificationCenter = ({ userRole }: NotificationCenterProps) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetchNotifications();
@@ -21,7 +21,11 @@ const NotificationCenter = ({ userRole }: NotificationCenterProps) => {
     // Set up real-time subscription for notifications
     const subscription = supabase
       .channel('notifications')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+      }, () => {
         fetchNotifications();
       })
       .subscribe();
@@ -33,19 +37,20 @@ const NotificationCenter = ({ userRole }: NotificationCenterProps) => {
 
   const fetchNotifications = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
-
       setNotifications(data || []);
-      setUnreadCount(data?.filter(n => !n.is_read).length || 0);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching notifications:', error);
-      toast.error('Error loading notifications');
     } finally {
       setLoading(false);
     }
@@ -59,190 +64,87 @@ const NotificationCenter = ({ userRole }: NotificationCenterProps) => {
         .eq('id', notificationId);
 
       if (error) throw error;
-
-      setNotifications(prev => 
-        prev.map((n: any) => 
-          n.id === notificationId ? { ...n, is_read: true } : n
-        )
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error: any) {
+      fetchNotifications();
+    } catch (error) {
       console.error('Error marking notification as read:', error);
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('is_read', false);
-
-      if (error) throw error;
-
-      setNotifications(prev => 
-        prev.map((n: any) => ({ ...n, is_read: true }))
-      );
-      setUnreadCount(0);
-      toast.success('All notifications marked as read');
-    } catch (error: any) {
-      console.error('Error marking all as read:', error);
-      toast.error('Error updating notifications');
+      toast.error('Failed to update notification');
     }
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'warning':
-        return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
-      case 'error':
-        return <X className="w-5 h-5 text-red-500" />;
-      case 'success':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
-      default:
-        return <Info className="w-5 h-5 text-blue-500" />;
+      case 'success': return <CheckCircle className="w-5 h-5 text-green-600" />;
+      case 'warning': return <AlertTriangle className="w-5 h-5 text-yellow-600" />;
+      case 'error': return <AlertTriangle className="w-5 h-5 text-red-600" />;
+      default: return <Info className="w-5 h-5 text-blue-600" />;
     }
   };
 
-  const getNotificationColor = (type: string) => {
-    switch (type) {
-      case 'warning':
-        return 'border-l-yellow-500 bg-yellow-50';
-      case 'error':
-        return 'border-l-red-500 bg-red-50';
-      case 'success':
-        return 'border-l-green-500 bg-green-50';
-      default:
-        return 'border-l-blue-500 bg-blue-50';
-    }
-  };
+  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Bell className="w-6 h-6" />
+          <Bell className="w-8 h-8 text-blue-600" />
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Notifications</h2>
-            <p className="text-gray-600">System alerts and important updates</p>
+            <h2 className="text-2xl font-bold text-gray-900">Notification Center</h2>
+            <p className="text-gray-600">Stay updated with system alerts and important information</p>
           </div>
-          {unreadCount > 0 && (
-            <Badge className="bg-red-500 text-white">
-              {unreadCount} unread
-            </Badge>
-          )}
         </div>
         {unreadCount > 0 && (
-          <Button onClick={markAllAsRead} variant="outline">
-            <Check className="w-4 h-4 mr-2" />
-            Mark All Read
-          </Button>
+          <Badge variant="secondary" className="bg-red-100 text-red-800">
+            {unreadCount} unread
+          </Badge>
         )}
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-32">
-          <div className="text-gray-500">Loading notifications...</div>
-        </div>
-      ) : notifications.length > 0 ? (
         <div className="space-y-4">
-          {notifications.map((notification: any) => {
-            const isRoleChangeRequest = notification.type === 'role_change_request';
-            return (
-              <Card 
-                key={notification.id} 
-                className={`border-l-4 ${getNotificationColor(notification.type)} ${!notification.is_read ? 'shadow-md' : ''}`}
-              >
-                <CardHeader className="pb-3">
+          {[1,2,3].map(i => (
+            <div key={i} className="h-20 bg-gray-200 rounded-lg animate-pulse"></div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {notifications.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications</h3>
+                <p className="text-gray-500">You're all caught up! New notifications will appear here.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            notifications.map((notification: any) => (
+              <Card key={notification.id} className={`transition-all ${notification.is_read ? 'opacity-75' : 'border-l-4 border-l-blue-500'}`}>
+                <CardContent className="pt-4">
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-start space-x-3">
                       {getNotificationIcon(notification.type)}
-                      <div>
-                        <CardTitle className={`text-lg ${!notification.is_read ? 'font-bold' : 'font-medium'}`}>
-                          {notification.title}
-                        </CardTitle>
-                        <CardDescription>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{notification.title}</h4>
+                        <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                        <p className="text-xs text-gray-400 mt-2">
                           {new Date(notification.created_at).toLocaleString()}
-                        </CardDescription>
+                        </p>
                       </div>
                     </div>
-                    {!notification.is_read && !isRoleChangeRequest && (
+                    {!notification.is_read && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => markAsRead(notification.id)}
+                        className="text-blue-600 hover:text-blue-800"
                       >
-                        <Check className="w-4 h-4" />
+                        Mark as read
                       </Button>
                     )}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-700">{notification.message}</p>
-                  {/* Role Change Request Actions for Admin */}
-                  {isRoleChangeRequest && userRole === 'admin' && (
-                    <div className="mt-4 flex gap-2">
-                      <Button size="sm" variant="outline" onClick={async () => {
-                        // Parse extra_data for requestedRole
-                        let requestedRole = '';
-                        try {
-                          requestedRole = JSON.parse(notification.extra_data).requestedRole;
-                        } catch {}
-                        if (!requestedRole) {
-                          toast.error('Invalid role request data.');
-                          return;
-                        }
-                        // Update user role
-                        const { error } = await supabase.from('profiles').update({ role: requestedRole }).eq('id', notification.related_id);
-                        if (!error) {
-                          // Mark notification as read
-                          await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id);
-                          // Notify user
-                          await supabase.from('notifications').insert([
-                            {
-                              title: 'Role Change Approved',
-                              message: `Your role has been changed to ${requestedRole}.`,
-                              user_id: notification.related_id,
-                              type: 'success',
-                            }
-                          ]);
-                          toast.success('Role updated and user notified.');
-                          fetchNotifications();
-                        } else {
-                          toast.error('Failed to update role.');
-                        }
-                      }}>
-                        Approve
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={async () => {
-                        // Mark notification as read
-                        await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id);
-                        // Notify user
-                        await supabase.from('notifications').insert([
-                          {
-                            title: 'Role Change Rejected',
-                            message: 'Your role change request was rejected by the admin.',
-                            user_id: notification.related_id,
-                            type: 'error',
-                          }
-                        ]);
-                        toast.success('User notified of rejection.');
-                        fetchNotifications();
-                      }}>
-                        Reject
-                      </Button>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications</h3>
-          <p className="text-gray-600">You're all caught up! No new notifications at this time.</p>
+            ))
+          )}
         </div>
       )}
     </div>
