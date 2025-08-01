@@ -1,137 +1,114 @@
 
 import { useState, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
-import Sidebar from './Sidebar';
-import Header from './Header';
-import DashboardHome from './DashboardHome';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+// Import existing components
 import StudentProfiles from '@/components/students/StudentProfiles';
 import StaffProfiles from '@/components/staff/StaffProfiles';
 import ClinicVisits from '@/components/clinic/ClinicVisits';
 import ImmunizationManagement from '@/components/immunizations/ImmunizationManagement';
 import MedicationInventorySystem from '@/components/medication/MedicationInventorySystem';
-import BulkUpload from '@/components/database/BulkUpload';
-import Settings from '@/components/settings/Settings';
 import InsuranceManagement from '@/components/insurance/InsuranceManagement';
 import Reports from '@/components/reports/Reports';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import BulkUpload from '@/components/database/BulkUpload';
+import Settings from '@/components/settings/Settings';
 
-interface DashboardProps {
-  userRole: string;
-}
+// Import new medical-focused components
+import MedicalHeader from './MedicalHeader';
+import MedicalSidebar from './MedicalSidebar';
+import MedicalDashboard from './MedicalDashboard';
 
-const Dashboard = ({ userRole }: DashboardProps) => {
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const location = useLocation();
+const Dashboard = () => {
+  const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [userRole, setUserRole] = useState('nurse');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (userRole) {
-      fetchUserProfile();
-    }
-  }, [userRole]);
+    fetchUserProfile();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setUser(session.user);
+          await fetchUserProfile();
+        } else {
+          setUser(null);
+          setUserProfile(null);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const fetchUserProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      
       if (user) {
-        // Try to get profile from profiles table
+        setUser(user);
+        
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
-          .maybeSingle();
+          .single();
 
         if (error && error.code !== 'PGRST116') {
           console.error('Error fetching profile:', error);
+          toast.error('Error loading user profile');
+        } else if (profile) {
+          setUserProfile(profile);
+          setUserRole(profile.user_role || profile.role || 'nurse');
         }
-
-        // Create profile object with available data
-        setUserProfile({
-          id: user.id,
-          email: profile?.email || user.email,
-          full_name: profile?.full_name || user.user_metadata?.full_name || user.email,
-          role: profile?.role || userRole,
-          phone_number: profile?.phone_number || '',
-          employee_id: profile?.employee_id || '',
-          department: profile?.department || '',
-          created_at: profile?.created_at || user.created_at,
-          updated_at: profile?.updated_at || user.updated_at
-        });
       }
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('Error in fetchUserProfile:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      // Clear any cached data
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // Force page refresh to ensure clean state
-      window.location.href = '/auth';
-    } catch (error: any) {
-      console.error('Error logging out:', error);
-      toast.error('Error logging out: ' + error.message);
-    }
-  };
-
-  const getCurrentView = () => {
-    const path = location.pathname;
-    if (path === '/' || path === '') return 'home';
-    if (path.includes('/students')) return 'students';
-    if (path.includes('/staff')) return 'staff';
-    if (path.includes('/clinic')) return 'clinic';
-    if (path.includes('/immunizations')) return 'immunizations';
-    if (path.includes('/medications')) return 'medication';
-    if (path.includes('/insurance')) return 'insurance';
-    if (path.includes('/reports')) return 'reports';
-    if (path.includes('/upload')) return 'bulk-upload';
-    if (path.includes('/settings')) return 'settings';
-    return 'home';
-  };
-
-  // Don't render until we have a userRole
-  if (!userRole) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p>Loading dashboard...</p>
+          <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Loading Medical System</h2>
+          <p className="text-gray-600">Initializing health records management...</p>
         </div>
       </div>
     );
   }
 
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar userRole={userRole} />
+    <div className="min-h-screen bg-gray-50 flex w-full">
+      <MedicalSidebar userRole={userRole} />
       
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Header 
-          userProfile={userProfile}
-          currentView={getCurrentView()}
-          onLogout={handleLogout}
-          onMenuClick={() => {}}
-          isSidebarOpen={true}
-        />
+      <div className="flex-1 flex flex-col">
+        <MedicalHeader userRole={userRole} userProfile={userProfile} />
         
-        <main className="flex-1 overflow-y-auto bg-gray-50 animate-fade-in">
+        <main className="flex-1 overflow-auto">
           <Routes>
-            <Route path="/" element={<DashboardHome userRole={userRole} />} />
-            <Route path="/students" element={<StudentProfiles userRole={userRole} />} />
-            <Route path="/staff" element={<StaffProfiles userRole={userRole} />} />
-            <Route path="/clinic" element={<ClinicVisits userRole={userRole} />} />
-            <Route path="/immunizations" element={<ImmunizationManagement userRole={userRole} />} />
-            <Route path="/medications" element={<MedicationInventorySystem userRole={userRole} />} />
-            <Route path="/insurance" element={<InsuranceManagement userRole={userRole} />} />
-            <Route path="/reports" element={<Reports userRole={userRole} />} />
-            <Route path="/upload" element={<BulkUpload userRole={userRole} />} />
-            <Route path="/settings" element={<Settings userRole={userRole} onProfileUpdate={fetchUserProfile} />} />
+            <Route path="/" element={<MedicalDashboard userRole={userRole} />} />
+            <Route path="/students/*" element={<StudentProfiles userRole={userRole} />} />
+            <Route path="/staff/*" element={<StaffProfiles userRole={userRole} />} />
+            <Route path="/clinic/*" element={<ClinicVisits userRole={userRole} />} />
+            <Route path="/immunizations/*" element={<ImmunizationManagement userRole={userRole} />} />
+            <Route path="/medications/*" element={<MedicationInventorySystem userRole={userRole} />} />
+            <Route path="/insurance/*" element={<InsuranceManagement userRole={userRole} />} />
+            <Route path="/reports/*" element={<Reports userRole={userRole} />} />
+            <Route path="/upload/*" element={<BulkUpload userRole={userRole} />} />
+            <Route path="/settings/*" element={<Settings userRole={userRole} />} />
           </Routes>
         </main>
       </div>
