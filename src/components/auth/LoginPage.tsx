@@ -1,12 +1,14 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Heart, UserPlus, LogIn, Eye, EyeOff } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Heart, UserPlus, LogIn, Eye, EyeOff, Stethoscope, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 const LoginPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -14,9 +16,35 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState('nurse');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  const checkUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      navigate('/');
+    }
+  };
+
+  const cleanupAuthState = () => {
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+    Object.keys(sessionStorage || {}).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+  };
 
   const validateForm = () => {
     if (!email || !password) {
@@ -39,6 +67,11 @@ const LoginPage = () => {
         toast.error('Passwords do not match');
         return false;
       }
+
+      if (!role) {
+        toast.error('Please select a role');
+        return false;
+      }
     }
 
     return true;
@@ -53,15 +86,20 @@ const LoginPage = () => {
 
     try {
       if (isSignUp) {
-        console.log('Attempting to sign up user:', email);
-        
+        cleanupAuthState();
+        try {
+          await supabase.auth.signOut({ scope: 'global' });
+        } catch (err) {
+          // Continue even if this fails
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
             data: {
               full_name: fullName.trim(),
-              role: 'other_staff'
+              role: role
             }
           }
         });
@@ -78,16 +116,41 @@ const LoginPage = () => {
           }
         } else if (data.user) {
           console.log('User created successfully:', data.user.id);
-          toast.success('Account created successfully! You can now sign in.');
+          
+          // Insert profile data
+          try {
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .insert({
+                user_id: data.user.id,
+                full_name: fullName.trim(),
+                user_role: role,
+                role: role
+              });
+            
+            if (profileError) {
+              console.error('Profile creation error:', profileError);
+            }
+          } catch (profileErr) {
+            console.error('Profile creation failed:', profileErr);
+          }
+
+          toast.success('Account created successfully! Please check your email to verify your account.');
           setIsSignUp(false);
           // Clear form
           setEmail('');
           setPassword('');
           setConfirmPassword('');
           setFullName('');
+          setRole('nurse');
         }
       } else {
-        console.log('Attempting to sign in user:', email);
+        cleanupAuthState();
+        try {
+          await supabase.auth.signOut({ scope: 'global' });
+        } catch (err) {
+          // Continue even if this fails
+        }
         
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
@@ -106,6 +169,9 @@ const LoginPage = () => {
         } else if (data.user) {
           console.log('User signed in successfully:', data.user.id);
           toast.success('Welcome! Loading your dashboard...');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 100);
         }
       }
     } catch (error: any) {
@@ -116,19 +182,18 @@ const LoginPage = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-orange-50 flex items-center justify-center p-4">
-      {/* Background pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-10 left-10 w-20 h-20 bg-green-600 rounded-full"></div>
-        <div className="absolute top-32 right-20 w-16 h-16 bg-blue-600 rounded-full"></div>
-        <div className="absolute bottom-20 left-32 w-12 h-12 bg-orange-600 rounded-full"></div>
-        <div className="absolute bottom-32 right-10 w-24 h-24 bg-red-600 rounded-full"></div>
-      </div>
+  const roles = [
+    { value: 'nurse', label: 'School Nurse', icon: Heart },
+    { value: 'medical_officer', label: 'Medical Officer', icon: Stethoscope },
+    { value: 'admin', label: 'System Administrator', icon: Shield },
+    { value: 'other_staff', label: 'Other Medical Staff', icon: UserPlus }
+  ];
 
-      <Card className="w-full max-w-md shadow-xl backdrop-blur-sm bg-white/95 animate-fade-in">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-green-600 to-blue-600 rounded-full flex items-center justify-center animate-scale-in">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-lg border-0">
+        <CardHeader className="text-center space-y-4 pb-6">
+          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center">
             <Heart className="w-8 h-8 text-white" />
           </div>
           <div>
@@ -136,44 +201,39 @@ const LoginPage = () => {
             <CardDescription className="text-gray-600">
               School Health Records Management System
             </CardDescription>
-            <div className="text-xs text-green-600 font-medium mt-2">
-              🇰🇪 Kenya Secondary Schools
-            </div>
           </div>
         </CardHeader>
         
         <CardContent>
           <form onSubmit={handleAuth} className="space-y-4">
             {isSignUp && (
-              <div className="space-y-2 animate-fade-in">
-                <Label htmlFor="fullName">Full Name *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
                 <Input
                   id="fullName"
                   type="text"
                   placeholder="Enter your full name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="transition-all duration-200 focus:scale-105"
                   required
                 />
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address *</Label>
+              <Label htmlFor="email">Email Address</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="your.email@example.com"
+                placeholder="your.email@school.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="transition-all duration-200 focus:scale-105"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password">Password *</Label>
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -181,7 +241,7 @@ const LoginPage = () => {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pr-10 transition-all duration-200 focus:scale-105"
+                  className="pr-10"
                   required
                 />
                 <button
@@ -195,32 +255,56 @@ const LoginPage = () => {
             </div>
 
             {isSignUp && (
-              <div className="space-y-2 animate-fade-in">
-                <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="pr-10 transition-all duration-200 focus:scale-105"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm your password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={role} onValueChange={setRole}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((roleOption) => {
+                        const Icon = roleOption.icon;
+                        return (
+                          <SelectItem key={roleOption.value} value={roleOption.value}>
+                            <div className="flex items-center space-x-2">
+                              <Icon className="w-4 h-4" />
+                              <span>{roleOption.label}</span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             )}
 
             <Button 
               type="submit" 
-              className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 transition-all duration-300 transform hover:scale-105" 
+              className="w-full bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700" 
               disabled={loading}
             >
               {loading ? (
@@ -243,8 +327,9 @@ const LoginPage = () => {
                 setPassword('');
                 setConfirmPassword('');
                 setFullName('');
+                setRole('nurse');
               }}
-              className="text-blue-600 hover:text-blue-700 text-sm transition-colors duration-200"
+              className="text-blue-600 hover:text-blue-700 text-sm"
             >
               {isSignUp 
                 ? 'Already have an account? Sign in' 
@@ -253,17 +338,10 @@ const LoginPage = () => {
             </button>
           </div>
 
-          <div className="mt-6 text-xs text-gray-500 text-center space-y-2">
+          <div className="mt-6 text-xs text-gray-500 text-center">
             <div className="flex items-center justify-center space-x-2">
               <Shield className="w-3 h-3" />
               <p>Secure access for authorized school personnel only</p>
-            </div>
-            <p className="text-green-600 font-medium">🇰🇪 Designed for Kenyan Secondary Schools</p>
-            <div className="flex justify-center space-x-4 mt-4">
-              <div className="w-8 h-1 bg-green-600 rounded"></div>
-              <div className="w-8 h-1 bg-blue-600 rounded"></div>
-              <div className="w-8 h-1 bg-orange-600 rounded"></div>
-              <div className="w-8 h-1 bg-red-600 rounded"></div>
             </div>
           </div>
         </CardContent>
