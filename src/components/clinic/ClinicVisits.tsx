@@ -147,19 +147,19 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50/30 via-white to-green-50/30">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-green-600 rounded-xl flex items-center justify-center">
-                  <Stethoscope className="w-6 h-6 text-white" />
+            <div className="space-y-3">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <Stethoscope className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900">
-                    Clinic Visit Management
+                  <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                    Medical Center Management
                   </h1>
-                  <p className="text-gray-600 text-lg">
-                    Track and manage all student clinic visits and treatments
+                  <p className="text-gray-600 text-lg leading-relaxed">
+                    Comprehensive student health monitoring and clinic visit tracking system
                   </p>
                 </div>
               </div>
@@ -169,9 +169,9 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
               <Button 
                 onClick={handleAddVisit}
                 size="lg"
-                className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-semibold px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
               >
-                <Plus className="w-5 h-5 mr-2" />
+                <Plus className="w-5 h-5 mr-3" />
                 Record New Visit
               </Button>
             )}
@@ -180,61 +180,61 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
 
         {/* Stats Dashboard */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300">
+          <Card className="bg-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Total Visits</p>
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Total Visits</p>
                   <p className="text-3xl font-bold text-gray-900">{stats.totalVisits}</p>
-                  <p className="text-xs text-gray-500">All time records</p>
+                  <p className="text-xs text-gray-500">All recorded visits</p>
                 </div>
-                <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center">
-                  <Stethoscope className="w-7 h-7 text-blue-600" />
+                <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center">
+                  <Stethoscope className="w-8 h-8 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300">
+          <Card className="bg-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Today's Visits</p>
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Today's Visits</p>
                   <p className="text-3xl font-bold text-green-600">{stats.todayVisits}</p>
                   <p className="text-xs text-gray-500">Current day activity</p>
                 </div>
-                <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center">
-                  <Calendar className="w-7 h-7 text-green-600" />
+                <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center">
+                  <Calendar className="w-8 h-8 text-green-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300">
+          <Card className="bg-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Follow-ups</p>
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Follow-ups</p>
                   <p className="text-3xl font-bold text-orange-600">{stats.followUpsRequired}</p>
                   <p className="text-xs text-gray-500">Require attention</p>
                 </div>
-                <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center">
-                  <Clock className="w-7 h-7 text-orange-600" />
+                <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center">
+                  <Clock className="w-8 h-8 text-orange-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300">
+          <Card className="bg-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Daily Average</p>
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Daily Average</p>
                   <p className="text-3xl font-bold text-purple-600">{stats.avgVisitsPerDay}</p>
                   <p className="text-xs text-gray-500">Past 7 days</p>
                 </div>
-                <div className="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center">
-                  <TrendingUp className="w-7 h-7 text-purple-600" />
+                <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center">
+                  <TrendingUp className="w-8 h-8 text-purple-600" />
                 </div>
               </div>
             </CardContent>
@@ -242,7 +242,7 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
         </div>
 
         {/* Search and Filters */}
-        <Card className="bg-white border-0 shadow-sm">
+        <Card className="bg-white border-0 shadow-lg rounded-xl">
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 relative">
@@ -251,28 +251,30 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
                   placeholder="Search visits by student name, symptoms, diagnosis, or visit type..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 h-12 text-base border-2 border-gray-200 focus:border-blue-500 focus:ring-0 rounded-xl"
+                  className="pl-12 h-14 text-base border-2 border-gray-200 focus:border-blue-500 focus:ring-0 rounded-xl bg-gray-50 focus:bg-white transition-all duration-200"
                 />
               </div>
-              <Button variant="outline" size="lg" className="h-12 px-6 rounded-xl border-2">
+              <Button variant="outline" size="lg" className="h-14 px-8 rounded-xl border-2 font-semibold">
                 <Filter className="w-4 h-4 mr-2" />
-                Filters
+                Advanced Filters
               </Button>
             </div>
-          </div>
+          </CardContent>
         </Card>
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Today's Visits */}
-          <Card className="bg-white border-0 shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center text-lg font-semibold">
-                <Calendar className="w-5 h-5 mr-2 text-green-600" />
+          <Card className="bg-white border-0 shadow-lg rounded-xl">
+            <CardHeader className="pb-4 border-b border-gray-100">
+              <CardTitle className="flex items-center text-xl font-bold">
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                  <Calendar className="w-5 h-5 text-green-600" />
+                </div>
                 Today's Visits ({todayVisits.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="p-6 space-y-4">
               {todayVisits.length > 0 ? (
                 todayVisits.slice(0, 5).map((visit: any) => (
                   <VisitCard
@@ -280,46 +282,55 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
                     visit={visit}
                     onView={() => handleViewVisit(visit)}
                     onEdit={() => handleEditVisit(visit)}
+                    canEdit={canManageVisits}
                   />
                 ))
               ) : (
-                <div className="text-center py-8">
-                  <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">No visits today</p>
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Calendar className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 font-medium">No visits today</p>
+                  <p className="text-gray-400 text-sm mt-1">Clinic visits will appear here</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Recent Visits */}
-          <Card className="bg-white border-0 shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center text-lg font-semibold">
-                <Clock className="w-5 h-5 mr-2 text-blue-600" />
-                Recent Visits
+          <Card className="bg-white border-0 shadow-lg rounded-xl">
+            <CardHeader className="pb-4 border-b border-gray-100">
+              <CardTitle className="flex items-center text-xl font-bold">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                </div>
+                Recent Activity
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="p-6 space-y-4">
               {recentVisits.map((visit: any) => (
                 <VisitCard
                   key={visit.id}
                   visit={visit}
                   onView={() => handleViewVisit(visit)}
                   onEdit={() => handleEditVisit(visit)}
+                  canEdit={canManageVisits}
                 />
               ))}
             </CardContent>
           </Card>
 
           {/* Follow-up Required */}
-          <Card className="bg-white border-0 shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center text-lg font-semibold">
-                <Users className="w-5 h-5 mr-2 text-orange-600" />
-                Follow-ups Required ({followUpVisits.length})
+          <Card className="bg-white border-0 shadow-lg rounded-xl">
+            <CardHeader className="pb-4 border-b border-gray-100">
+              <CardTitle className="flex items-center text-xl font-bold">
+                <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                  <Users className="w-5 h-5 text-orange-600" />
+                </div>
+                Follow-ups ({followUpVisits.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="p-6 space-y-4">
               {followUpVisits.length > 0 ? (
                 followUpVisits.slice(0, 5).map((visit: any) => (
                   <VisitCard
@@ -327,48 +338,55 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
                     visit={visit}
                     onView={() => handleViewVisit(visit)}
                     onEdit={() => handleEditVisit(visit)}
+                    canEdit={canManageVisits}
                   />
                 ))
               ) : (
-                <div className="text-center py-8">
-                  <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">No follow-ups required</p>
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Users className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 font-medium">No follow-ups required</p>
+                  <p className="text-gray-400 text-sm mt-1">Patient follow-ups will appear here</p>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* All Visits - Filtered Results */}
+        {/* Search Results */}
         {searchTerm && (
-          <Card className="bg-white border-0 shadow-sm">
-            <CardHeader>
+          <Card className="bg-white border-0 shadow-lg rounded-xl">
+            <CardHeader className="border-b border-gray-100">
               <CardTitle className="flex items-center justify-between">
-                <span>Search Results ({filteredVisits.length})</span>
+                <span className="text-xl font-bold">Search Results ({filteredVisits.length})</span>
                 {searchTerm && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full">
                     "{searchTerm}"
                   </Badge>
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               {filteredVisits.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredVisits.map((visit: any) => (
                     <VisitCard
                       key={visit.id}
                       visit={visit}
                       onView={() => handleViewVisit(visit)}
                       onEdit={() => handleEditVisit(visit)}
+                      canEdit={canManageVisits}
                     />
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No visits found</h3>
-                  <p className="text-gray-600">Try adjusting your search terms</p>
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Search className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">No matching visits found</h3>
+                  <p className="text-gray-600 text-base">Try adjusting your search terms or browse recent visits above</p>
                 </div>
               )}
             </CardContent>
@@ -377,23 +395,23 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
 
         {/* Empty State */}
         {!loading && visits.length === 0 && (
-          <Card className="bg-gradient-to-r from-blue-50 to-green-50 border-0 shadow-sm">
-            <CardContent className="p-12 text-center">
-              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <Stethoscope className="w-10 h-10 text-blue-600" />
+          <Card className="bg-gradient-to-br from-blue-50 to-green-50 border-0 shadow-lg rounded-2xl">
+            <CardContent className="p-16 text-center">
+              <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg">
+                <Stethoscope className="w-12 h-12 text-blue-600" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">Ready to Start</h3>
-              <p className="text-gray-600 text-lg mb-6 max-w-md mx-auto">
-                Begin recording clinic visits to track student health and build comprehensive medical records
+              <h3 className="text-3xl font-bold text-gray-900 mb-4">Welcome to the Medical Center</h3>
+              <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto leading-relaxed">
+                Start building comprehensive student health records by recording clinic visits, tracking treatments, and monitoring follow-up care
               </p>
               {canManageVisits && (
                 <Button 
                   onClick={handleAddVisit}
                   size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-semibold px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-semibold px-12 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-lg"
                 >
-                  <Plus className="w-5 h-5 mr-2" />
-                  Record First Visit
+                  <Plus className="w-6 h-6 mr-3" />
+                  Record Your First Visit
                 </Button>
               )}
             </CardContent>
