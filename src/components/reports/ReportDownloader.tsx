@@ -18,6 +18,24 @@ const ReportDownloader = ({ userRole }: ReportDownloaderProps) => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [loading, setLoading] = useState(false);
 
+  const downloadCSV = (csvContent: string, filename: string) => {
+    const BOM = '\uFEFF';
+    const csvWithBOM = BOM + csvContent;
+    const blob = new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  };
+
   const generateStudentReport = async () => {
     const { data, error } = await supabase
       .from('students')
@@ -53,7 +71,7 @@ const ReportDownloader = ({ userRole }: ReportDownloaderProps) => {
         student.ward || '',
         student.village || ''
       ];
-      csvRows.push(row.map(field => `"${field}"`).join(','));
+      csvRows.push(row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','));
     });
 
     return csvRows.join('\n');
@@ -89,7 +107,7 @@ const ReportDownloader = ({ userRole }: ReportDownloaderProps) => {
     
     data?.forEach((visit: any) => {
       const row = [
-        new Date(visit.visit_date).toLocaleDateString(),
+        visit.visit_date ? new Date(visit.visit_date).toLocaleDateString() : '',
         visit.students?.full_name || '',
         visit.students?.student_id || '',
         visit.visit_type || '',
@@ -104,7 +122,7 @@ const ReportDownloader = ({ userRole }: ReportDownloaderProps) => {
         visit.height || '',
         visit.follow_up_required ? 'Yes' : 'No'
       ];
-      csvRows.push(row.map(field => `"${field}"`).join(','));
+      csvRows.push(row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','));
     });
 
     return csvRows.join('\n');
@@ -134,13 +152,13 @@ const ReportDownloader = ({ userRole }: ReportDownloaderProps) => {
         immunization.students?.student_id || '',
         immunization.students?.form_level?.replace('_', ' ') || '',
         immunization.vaccine_name || '',
-        new Date(immunization.date_administered).toLocaleDateString(),
+        immunization.date_administered ? new Date(immunization.date_administered).toLocaleDateString() : '',
         immunization.administered_by || '',
         immunization.batch_number || '',
         immunization.next_dose_date ? new Date(immunization.next_dose_date).toLocaleDateString() : '',
         immunization.notes || ''
       ];
-      csvRows.push(row.map(field => `"${field}"`).join(','));
+      csvRows.push(row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','));
     });
 
     return csvRows.join('\n');
@@ -171,7 +189,7 @@ const ReportDownloader = ({ userRole }: ReportDownloaderProps) => {
     
     data?.forEach((dispensing: any) => {
       const row = [
-        new Date(dispensing.dispensed_at).toLocaleDateString(),
+        dispensing.dispensed_at ? new Date(dispensing.dispensed_at).toLocaleDateString() : '',
         dispensing.clinic_visits?.students?.full_name || '',
         dispensing.clinic_visits?.students?.student_id || '',
         dispensing.medications?.name || '',
@@ -180,7 +198,7 @@ const ReportDownloader = ({ userRole }: ReportDownloaderProps) => {
         dispensing.dosage_instructions || '',
         dispensing.profiles?.full_name || ''
       ];
-      csvRows.push(row.map(field => `"${field}"`).join(','));
+      csvRows.push(row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','));
     });
 
     return csvRows.join('\n');
@@ -219,61 +237,53 @@ const ReportDownloader = ({ userRole }: ReportDownloaderProps) => {
           throw new Error('Invalid report type');
       }
 
-      // Create and download file
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-
+      downloadCSV(csvContent, filename);
       toast.success('Report downloaded successfully');
     } catch (error: any) {
       console.error('Error generating report:', error);
-      toast.error('Error generating report');
+      toast.error('Error generating report: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-white min-h-screen">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Download Reports</h2>
         <p className="text-gray-600">Generate and download various system reports</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <FileText className="w-5 h-5 mr-2" />
+      <Card className="bg-white border-gray-200 shadow-sm">
+        <CardHeader className="bg-white">
+          <CardTitle className="flex items-center text-gray-900">
+            <FileText className="w-5 h-5 mr-2 text-blue-600" />
             Report Generator
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-gray-600">
             Select report type and date range to generate downloadable reports
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 bg-white">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Report Type</label>
+              <label className="text-sm font-medium text-gray-700">Report Type</label>
               <Select value={reportType} onValueChange={setReportType}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white border-gray-300">
                   <SelectValue placeholder="Select report type" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="students">Student Profiles</SelectItem>
-                  <SelectItem value="clinic">Clinic Visits</SelectItem>
-                  <SelectItem value="immunizations">Immunization Records</SelectItem>
-                  <SelectItem value="medications">Medication Dispensing</SelectItem>
+                <SelectContent className="bg-white">
+                  <SelectItem value="students" className="hover:bg-gray-50">Student Profiles</SelectItem>
+                  <SelectItem value="clinic" className="hover:bg-gray-50">Clinic Visits</SelectItem>
+                  <SelectItem value="immunizations" className="hover:bg-gray-50">Immunization Records</SelectItem>
+                  <SelectItem value="medications" className="hover:bg-gray-50">Medication Dispensing</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {(reportType === 'clinic' || reportType === 'medications') && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Date Range (Optional)</label>
+                <label className="text-sm font-medium text-gray-700">Date Range (Optional)</label>
                 <DatePickerWithRange
                   date={dateRange}
                   onDateChange={setDateRange}
@@ -285,7 +295,7 @@ const ReportDownloader = ({ userRole }: ReportDownloaderProps) => {
           <Button 
             onClick={handleDownload} 
             disabled={!reportType || loading}
-            className="w-full md:w-auto"
+            className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white"
           >
             {loading ? (
               <>
@@ -296,13 +306,13 @@ const ReportDownloader = ({ userRole }: ReportDownloaderProps) => {
               <>
                 <Download className="w-4 h-4 mr-2" />
                 Download Report
-              </>
+              </Button>
             )}
           </Button>
 
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">Report Descriptions:</h4>
-            <ul className="text-sm text-blue-800 space-y-1">
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <h4 className="font-medium text-gray-900 mb-2">Report Descriptions:</h4>
+            <ul className="text-sm text-gray-700 space-y-1">
               <li><strong>Student Profiles:</strong> Complete student information including medical data</li>
               <li><strong>Clinic Visits:</strong> All clinic visits with symptoms, diagnosis, and treatment</li>
               <li><strong>Immunization Records:</strong> Vaccination history for all students</li>

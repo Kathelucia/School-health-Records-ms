@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -71,7 +72,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('id', user.id)
           .single();
         setUserProfile(profile);
         if (!immunization) {
@@ -178,10 +179,10 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
   return (
     <>
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="pb-6">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white">
+          <DialogHeader className="pb-6 bg-white">
             <DialogTitle className="flex items-center text-2xl font-bold text-gray-900">
-              <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-blue-600 rounded-xl flex items-center justify-center mr-4">
+              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mr-4">
                 <Syringe className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -193,20 +194,20 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6 bg-white">
             {/* Student Selection Card */}
-            <Card className="border-l-4 border-l-blue-500">
-              <CardHeader>
+            <Card className="bg-white border-gray-200">
+              <CardHeader className="bg-white">
                 <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
                   <User className="w-5 h-5 mr-2 text-blue-600" />
                   Student Information
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-white">
                 {selectedStudent ? (
-                  <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-green-50 rounded-xl border border-blue-200">
+                  <div className="flex items-center justify-between p-6 bg-gray-50 rounded-xl border border-gray-200">
                     <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center">
+                      <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
                         <User className="w-8 h-8 text-white" />
                       </div>
                       <div>
@@ -227,7 +228,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                       variant="outline"
                       onClick={() => setShowStudentSelector(true)}
                       size="lg"
-                      className="px-6"
+                      className="px-6 bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                     >
                       Change Student
                     </Button>
@@ -237,7 +238,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                     type="button"
                     variant="outline"
                     onClick={() => setShowStudentSelector(true)}
-                    className="w-full h-24 border-2 border-dashed border-gray-300 hover:border-green-400 hover:bg-green-50"
+                    className="w-full h-24 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-gray-50 bg-white"
                   >
                     <div className="text-center">
                       <User className="w-10 h-10 mx-auto mb-2 text-gray-400" />
@@ -250,25 +251,25 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
             </Card>
 
             {/* Immunization Details Card */}
-            <Card className="border-l-4 border-l-green-500">
-              <CardHeader>
+            <Card className="bg-white border-gray-200">
+              <CardHeader className="bg-white">
                 <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
                   <Shield className="w-5 h-5 mr-2 text-green-600" />
                   Immunization Details
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-6 bg-white">
                 <div className="space-y-2">
                   <Label htmlFor="vaccine_name" className="text-sm font-semibold text-gray-700">
                     Vaccine Name <span className="text-red-500">*</span>
                   </Label>
                   <Select value={formData.vaccine_name} onValueChange={handleVaccineChange}>
-                    <SelectTrigger className="h-12">
+                    <SelectTrigger className="h-12 bg-white border-gray-300">
                       <SelectValue placeholder="Select vaccine type" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white">
                       {commonVaccines.map(vaccine => (
-                        <SelectItem key={vaccine} value={vaccine}>{vaccine}</SelectItem>
+                        <SelectItem key={vaccine} value={vaccine} className="hover:bg-gray-50">{vaccine}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -277,7 +278,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                       placeholder="Enter specific vaccine name"
                       value={customVaccine}
                       onChange={(e) => setCustomVaccine(e.target.value)}
-                      className="mt-2 h-12"
+                      className="mt-2 h-12 bg-white border-gray-300"
                       required
                     />
                   )}
@@ -293,7 +294,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                       type="date"
                       value={formData.date_administered}
                       onChange={(e) => setFormData({ ...formData, date_administered: e.target.value })}
-                      className="h-12"
+                      className="h-12 bg-white border-gray-300"
                       required
                     />
                   </div>
@@ -305,7 +306,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                       type="date"
                       value={formData.next_dose_date}
                       onChange={(e) => setFormData({ ...formData, next_dose_date: e.target.value })}
-                      className="h-12"
+                      className="h-12 bg-white border-gray-300"
                     />
                   </div>
                 </div>
@@ -318,7 +319,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                       value={formData.batch_number}
                       onChange={(e) => setFormData({ ...formData, batch_number: e.target.value })}
                       placeholder="Enter vaccine batch number"
-                      className="h-12"
+                      className="h-12 bg-white border-gray-300"
                     />
                   </div>
 
@@ -329,7 +330,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                       value={formData.administered_by}
                       onChange={(e) => setFormData({ ...formData, administered_by: e.target.value })}
                       placeholder="Enter healthcare provider name"
-                      className="h-12"
+                      className="h-12 bg-white border-gray-300"
                     />
                   </div>
                 </div>
@@ -342,20 +343,20 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     rows={4}
                     placeholder="Any adverse reactions, patient response, special instructions, or additional observations..."
-                    className="resize-none text-base"
+                    className="resize-none text-base bg-white border-gray-300"
                   />
                 </div>
               </CardContent>
             </Card>
 
             {/* Form Actions */}
-            <div className="flex justify-end space-x-4 pt-6 border-t bg-gray-50/50 -mx-6 px-6 py-6">
+            <div className="flex justify-end space-x-4 pt-6 border-t bg-white px-6 py-6">
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={onClose}
                 size="lg"
-                className="px-8"
+                className="px-8 bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 <X className="w-4 h-4 mr-2" />
                 Cancel
@@ -364,7 +365,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                 type="submit" 
                 disabled={saving}
                 size="lg"
-                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-8"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8"
               >
                 {saving ? (
                   <div className="w-4 h-4 mr-2 animate-spin rounded-full border-b-2 border-white"></div>
