@@ -48,10 +48,14 @@ const Dashboard = ({ userRole }: DashboardProps) => {
     }
   };
 
+  const handleNavigate = (view: string) => {
+    setActiveView(view);
+  };
+
   const renderContent = () => {
     switch (activeView) {
       case 'dashboard':
-        return <DashboardHome userRole={userRole} />;
+        return <DashboardHome userRole={userRole} onNavigate={handleNavigate} />;
       
       case 'students':
         return <StudentProfiles userRole={userRole} />;
@@ -129,7 +133,7 @@ const Dashboard = ({ userRole }: DashboardProps) => {
         );
       
       default:
-        return <DashboardHome userRole={userRole} />;
+        return <DashboardHome userRole={userRole} onNavigate={handleNavigate} />;
     }
   };
 
