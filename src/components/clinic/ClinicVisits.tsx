@@ -149,6 +149,10 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
     setSelectedVisit(null);
   };
 
+  const handleViewVisit = (visit: any) => {
+    setSelectedVisit(visit);
+  };
+
   const handleFormClose = () => {
     setShowForm(false);
     setEditingVisit(null);
@@ -167,7 +171,6 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
     return (
       <ClinicVisitDetails
         visit={selectedVisit}
-        onBack={() => setSelectedVisit(null)}
         onEdit={() => handleEditVisit(selectedVisit)}
       />
     );
@@ -292,7 +295,9 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
                   <VisitCard
                     key={visit.id}
                     visit={visit}
-                    onClick={() => setSelectedVisit(visit)}
+                    onView={handleViewVisit}
+                    onEdit={handleEditVisit}
+                    canEdit={canManageVisits}
                   />
                 ))}
               </div>
@@ -313,7 +318,9 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
                 <VisitCard
                   key={visit.id}
                   visit={visit}
-                  onClick={() => setSelectedVisit(visit)}
+                  onView={handleViewVisit}
+                  onEdit={handleEditVisit}
+                  canEdit={canManageVisits}
                 />
               ))}
             </div>
@@ -325,7 +332,9 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
                 <VisitCard
                   key={visit.id}
                   visit={visit}
-                  onClick={() => setSelectedVisit(visit)}
+                  onView={handleViewVisit}
+                  onEdit={handleEditVisit}
+                  canEdit={canManageVisits}
                 />
               ))}
             </div>

@@ -90,6 +90,7 @@ const MedicationInventorySystem = ({ userRole }: MedicationInventorySystemProps)
   const handleEditMedication = (medication: any) => {
     setEditingMedication(medication);
     setShowForm(true);
+    setSelectedMedication(null);
   };
 
   const handleFormClose = () => {
@@ -351,11 +352,6 @@ const MedicationInventorySystem = ({ userRole }: MedicationInventorySystemProps)
           <MedicationDetailsModal
             medication={selectedMedication}
             onClose={() => setSelectedMedication(null)}
-            onEdit={() => {
-              setEditingMedication(selectedMedication);
-              setSelectedMedication(null);
-              setShowForm(true);
-            }}
           />
         )}
       </div>
