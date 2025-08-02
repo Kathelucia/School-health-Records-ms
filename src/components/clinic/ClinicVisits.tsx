@@ -1,74 +1,47 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Stethoscope, Users, AlertTriangle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Stethoscope, 
+  Plus, 
+  Calendar, 
+  Users, 
+  Activity,
+  Search,
+  Filter,
+  TrendingUp
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ClinicVisitForm from './ClinicVisitForm';
 import ClinicVisitDetails from './ClinicVisitDetails';
 import VisitCard from './VisitCard';
-import StudentSelector from '@/components/students/StudentSelector';
-import { ClinicVisit } from './types';
 
 interface ClinicVisitsProps {
   userRole: string;
 }
 
 const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
-  const [visits, setVisits] = useState<ClinicVisit[]>([]);
-  const [filteredVisits, setFilteredVisits] = useState<ClinicVisit[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [showStudentSelector, setShowStudentSelector] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
-  const [editingVisit, setEditingVisit] = useState<ClinicVisit | null>(null);
-  const [selectedVisit, setSelectedVisit] = useState<ClinicVisit | null>(null);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [selectedVisit, setSelectedVisit] = useState(null);
+  const [editingVisit, setEditingVisit] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState({
-    totalVisits: 0,
     todayVisits: 0,
-    emergencyVisits: 0,
-    followUpsNeeded: 0
+    weeklyVisits: 0,
+    pendingFollowUps: 0,
+    totalVisits: 0
   });
 
   useEffect(() => {
     fetchVisits();
-    fetchUserProfile();
+    fetchStats();
   }, []);
-
-  useEffect(() => {
-    if (searchTerm) {
-      const filtered = visits.filter((visit: ClinicVisit) =>
-        visit.students?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        visit.students?.student_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        visit.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        visit.symptoms?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredVisits(filtered);
-    } else {
-      setFilteredVisits(visits);
-    }
-  }, [searchTerm, visits]);
-
-  const fetchUserProfile = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        setUserProfile(profile);
-      }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-    }
-  };
 
   const fetchVisits = async () => {
     try {
@@ -76,11 +49,10 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
         .from('clinic_visits')
         .select(`
           *,
-          students:student_id (
+          students (
             id,
             full_name,
             student_id,
-            admission_number,
             form_level,
             stream
           )
@@ -89,32 +61,7 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
         .limit(100);
 
       if (error) throw error;
-      
-      const visitsData = data || [];
-      setVisits(visitsData);
-      setFilteredVisits(visitsData);
-      
-      // Calculate stats
-      const today = new Date().toDateString();
-      const todayVisits = visitsData.filter(visit => 
-        new Date(visit.visit_date).toDateString() === today
-      ).length;
-      
-      const emergencyVisits = visitsData.filter(visit => 
-        visit.visit_type === 'emergency'
-      ).length;
-      
-      const followUpsNeeded = visitsData.filter(visit => 
-        visit.follow_up_required
-      ).length;
-
-      setStats({
-        totalVisits: visitsData.length,
-        todayVisits,
-        emergencyVisits,
-        followUpsNeeded
-      });
-
+      setVisits(data || []);
     } catch (error: any) {
       console.error('Error fetching visits:', error);
       toast.error('Error loading clinic visits');
@@ -123,204 +70,277 @@ const ClinicVisits = ({ userRole }: ClinicVisitsProps) => {
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+
+      // Today's visits
+      const { count: todayCount } = await supabase
+        .from('clinic_visits')
+        .select('*', { count: 'exact', head: true })
+        .gte('visit_date', today);
+
+      // Weekly visits
+      const { count: weeklyCount } = await supabase
+        .from('clinic_visits')
+        .select('*', { count: 'exact', head: true })
+        .gte('visit_date', weekAgo.toISOString().split('T')[0]);
+
+      // Pending follow-ups
+      const { count: followUpCount } = await supabase
+        .from('clinic_visits')
+        .select('*', { count: 'exact', head: true })
+        .eq('follow_up_required', true)
+        .gte('follow_up_date', today);
+
+      // Total visits
+      const { count: totalCount } = await supabase
+        .from('clinic_visits')
+        .select('*', { count: 'exact', head: true });
+
+      setStats({
+        todayVisits: todayCount || 0,
+        weeklyVisits: weeklyCount || 0,
+        pendingFollowUps: followUpCount || 0,
+        totalVisits: totalCount || 0
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const filteredVisits = useMemo(() => {
+    if (!searchTerm) return visits;
+    
+    const term = searchTerm.toLowerCase();
+    return visits.filter((visit: any) =>
+      visit.students?.full_name?.toLowerCase().includes(term) ||
+      visit.students?.student_id?.toLowerCase().includes(term) ||
+      visit.diagnosis?.toLowerCase().includes(term) ||
+      visit.symptoms?.toLowerCase().includes(term) ||
+      visit.visit_type?.toLowerCase().includes(term)
+    );
+  }, [visits, searchTerm]);
+
+  const todaysVisits = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return filteredVisits.filter((visit: any) => 
+      visit.visit_date?.startsWith(today)
+    );
+  }, [filteredVisits]);
+
+  const followUpVisits = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return filteredVisits.filter((visit: any) => 
+      visit.follow_up_required && visit.follow_up_date >= today
+    );
+  }, [filteredVisits]);
+
   const handleAddVisit = () => {
     setEditingVisit(null);
-    setSelectedStudent(null);
     setShowForm(true);
   };
 
-  const handleAddVisitForStudent = () => {
-    setEditingVisit(null);
-    setShowStudentSelector(true);
-  };
-
-  const handleStudentSelect = (student: any) => {
-    setSelectedStudent(student);
-    setShowStudentSelector(false);
-    setShowForm(true);
-  };
-
-  const handleEditVisit = (visit: ClinicVisit) => {
+  const handleEditVisit = (visit: any) => {
     setEditingVisit(visit);
-    setSelectedStudent(null);
     setShowForm(true);
-  };
-
-  const handleViewVisit = (visit: ClinicVisit) => {
-    setSelectedVisit(visit);
-    setShowDetails(true);
+    setSelectedVisit(null);
   };
 
   const handleFormClose = () => {
     setShowForm(false);
     setEditingVisit(null);
-    setSelectedStudent(null);
   };
 
   const handleFormSave = () => {
     fetchVisits();
+    fetchStats();
     setShowForm(false);
     setEditingVisit(null);
-    setSelectedStudent(null);
   };
 
   const canManageVisits = ['admin', 'nurse'].includes(userRole);
 
-  return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">School Health Clinic</h1>
-          <p className="text-gray-600 mt-1">
-            Manage student clinic visits and health assessments
-          </p>
-        </div>
-        {canManageVisits && (
-          <div className="flex space-x-3">
-            <Button onClick={handleAddVisitForStudent} variant="outline">
-              <Plus className="w-4 h-4 mr-2" />
-              New Visit for Student
-            </Button>
-            <Button onClick={handleAddVisit}>
-              <Plus className="w-4 h-4 mr-2" />
-              Quick Visit Entry
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Visits</CardTitle>
-            <Stethoscope className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalVisits}</div>
-            <p className="text-xs text-muted-foreground">All recorded visits</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today's Visits</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.todayVisits}</div>
-            <p className="text-xs text-muted-foreground">Visits today</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Emergency Cases</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.emergencyVisits}</div>
-            <p className="text-xs text-muted-foreground">Requiring urgent care</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Follow-ups Needed</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{stats.followUpsNeeded}</div>
-            <p className="text-xs text-muted-foreground">Scheduled follow-ups</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-        <Input
-          placeholder="Search by student name, ID, diagnosis..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      {/* Visit Cards */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1,2,3,4,5,6].map(i => (
-            <div key={i} className="h-64 bg-gray-200 rounded-lg animate-pulse"></div>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredVisits.map((visit: ClinicVisit) => (
-            <VisitCard
-              key={visit.id}
-              visit={visit}
-              onEdit={handleEditVisit}
-              onView={handleViewVisit}
-              canEdit={canManageVisits}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Empty State */}
-      {filteredVisits.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <Stethoscope className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            {searchTerm ? 'No matching visits found' : 'No clinic visits recorded'}
-          </h3>
-          <p className="text-gray-500 mb-6 max-w-md mx-auto">
-            {searchTerm 
-              ? 'Try adjusting your search terms to find specific visits'
-              : 'Start documenting student health visits to build comprehensive medical records'
-            }
-          </p>
-          {canManageVisits && !searchTerm && (
-            <div className="space-x-3">
-              <Button onClick={handleAddVisitForStudent} variant="outline">
-                Select Student First
-              </Button>
-              <Button onClick={handleAddVisit}>
-                Quick Entry
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Modals */}
-      {showForm && (
-        <ClinicVisitForm
-          visit={editingVisit}
-          student={selectedStudent}
-          onClose={handleFormClose}
-          onSave={handleFormSave}
-          userProfile={userProfile}
-        />
-      )}
-
+  if (selectedVisit) {
+    return (
       <ClinicVisitDetails
         visit={selectedVisit}
-        isOpen={showDetails}
-        onClose={() => {
-          setShowDetails(false);
-          setSelectedVisit(null);
-        }}
+        onBack={() => setSelectedVisit(null)}
+        onEdit={() => handleEditVisit(selectedVisit)}
       />
+    );
+  }
 
-      <StudentSelector
-        isOpen={showStudentSelector}
-        onClose={() => setShowStudentSelector(false)}
-        onSelect={handleStudentSelect}
-        title="Select Student for Clinic Visit"
-      />
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                <Stethoscope className="w-8 h-8 mr-3 text-blue-600" />
+                Clinic Visits
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Complete medical consultation and visit management system
+              </p>
+            </div>
+            {canManageVisits && (
+              <Button 
+                onClick={handleAddVisit}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-lg"
+                size="lg"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                New Visit
+              </Button>
+            )}
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Today's Visits</p>
+                    <p className="text-2xl font-bold text-blue-600">{stats.todayVisits}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Calendar className="w-6 h-6 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">This Week</p>
+                    <p className="text-2xl font-bold text-green-600">{stats.weeklyVisits}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-green-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Follow-ups Due</p>
+                    <p className="text-2xl font-bold text-orange-600">{stats.pendingFollowUps}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <Activity className="w-6 h-6 text-orange-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Total Visits</p>
+                    <p className="text-2xl font-bold text-purple-600">{stats.totalVisits}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <Users className="w-6 h-6 text-purple-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Search */}
+          <div className="relative mb-6">
+            <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+            <Input
+              placeholder="Search by student name, ID, diagnosis, or symptoms..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 py-3 text-lg"
+            />
+          </div>
+        </div>
+
+        {/* Visits Tabs */}
+        <Tabs defaultValue="all" className="space-y-6">
+          <TabsList className="bg-white border shadow-sm">
+            <TabsTrigger value="all">All Visits</TabsTrigger>
+            <TabsTrigger value="today">Today</TabsTrigger>
+            <TabsTrigger value="follow-ups">Follow-ups</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="all">
+            {loading ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {[1,2,3,4,5,6].map(i => (
+                  <div key={i} className="h-48 bg-gray-200 rounded-lg animate-pulse"></div>
+                ))}
+              </div>
+            ) : filteredVisits.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredVisits.map((visit: any) => (
+                  <VisitCard
+                    key={visit.id}
+                    visit={visit}
+                    onClick={() => setSelectedVisit(visit)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Stethoscope className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No visits found</h3>
+                <p className="text-gray-600">
+                  {searchTerm ? 'Try adjusting your search terms' : 'No clinic visits recorded yet'}
+                </p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="today">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {todaysVisits.map((visit: any) => (
+                <VisitCard
+                  key={visit.id}
+                  visit={visit}
+                  onClick={() => setSelectedVisit(visit)}
+                />
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="follow-ups">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {followUpVisits.map((visit: any) => (
+                <VisitCard
+                  key={visit.id}
+                  visit={visit}
+                  onClick={() => setSelectedVisit(visit)}
+                />
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Form Modal */}
+        {showForm && (
+          <ClinicVisitForm
+            visit={editingVisit}
+            onClose={handleFormClose}
+            onSave={handleFormSave}
+          />
+        )}
+      </div>
     </div>
   );
 };
