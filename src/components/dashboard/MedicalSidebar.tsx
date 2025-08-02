@@ -61,15 +61,15 @@ const MedicalSidebar = ({ activeView, onViewChange, userRole }: MedicalSidebarPr
       roles: ['admin', 'nurse', 'medical_officer']
     },
     {
+      id: 'bulk-upload',
+      label: 'Bulk Data Upload',
+      icon: Database,
+      roles: ['admin', 'nurse']
+    },
+    {
       id: 'staff',
       label: 'Staff Management',
       icon: UserCheck,
-      roles: ['admin']
-    },
-    {
-      id: 'bulk-upload',
-      label: 'Data Import',
-      icon: Database,
       roles: ['admin']
     },
     {
@@ -80,9 +80,9 @@ const MedicalSidebar = ({ activeView, onViewChange, userRole }: MedicalSidebarPr
     },
     {
       id: 'settings',
-      label: 'System Settings',
+      label: 'Settings',
       icon: Settings,
-      roles: ['admin']
+      roles: ['admin', 'nurse', 'medical_officer']
     }
   ];
 
