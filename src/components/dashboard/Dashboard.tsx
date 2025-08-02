@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import MedicalHeader from './MedicalHeader';
@@ -94,7 +95,7 @@ const Dashboard = ({ userRole }: DashboardProps) => {
         return <NotificationCenter userRole={userRole} />;
       
       case 'bulk-upload':
-        return <BulkUpload />;
+        return <BulkUpload userRole={userRole} />;
       
       case 'audit':
         return <AuditLogs userRole={userRole} />;
