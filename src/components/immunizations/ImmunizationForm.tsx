@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,10 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, User, Syringe } from 'lucide-react';
+import { Search, User, Syringe, Calendar, Save, X, Shield } from 'lucide-react';
 import StudentSelector from '@/components/students/StudentSelector';
 
 interface ImmunizationFormProps {
@@ -34,6 +33,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
   });
   const [saving, setSaving] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [customVaccine, setCustomVaccine] = useState('');
 
   useEffect(() => {
     fetchUserProfile();
@@ -104,29 +104,49 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
     setFormData({ ...formData, student_id: student.id });
   };
 
+  const handleVaccineChange = (value: string) => {
+    if (value === 'Other') {
+      setCustomVaccine('');
+      setFormData({ ...formData, vaccine_name: '' });
+    } else {
+      setCustomVaccine('');
+      setFormData({ ...formData, vaccine_name: value });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.student_id) {
-      toast.error('Please select a student');
+      toast.error('Please select a student for this immunization');
+      return;
+    }
+
+    if (!formData.vaccine_name && !customVaccine) {
+      toast.error('Please specify the vaccine name');
       return;
     }
 
     setSaving(true);
 
     try {
+      const submitData = {
+        ...formData,
+        vaccine_name: customVaccine || formData.vaccine_name
+      };
+
       if (immunization) {
         const { error } = await supabase
           .from('immunizations')
-          .update(formData)
+          .update(submitData)
           .eq('id', immunization.id);
         
         if (error) throw error;
-        toast.success('Immunization updated successfully');
+        toast.success('Immunization record updated successfully');
       } else {
         const { error } = await supabase
           .from('immunizations')
-          .insert([formData]);
+          .insert([submitData]);
         
         if (error) throw error;
         toast.success('Immunization recorded successfully');
@@ -158,150 +178,200 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
   return (
     <>
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center text-xl">
-              <Syringe className="w-6 h-6 mr-2 text-blue-600" />
-              {immunization ? 'Edit Immunization Record' : 'New Immunization Record'}
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-6">
+            <DialogTitle className="flex items-center text-2xl font-bold text-gray-900">
+              <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-blue-600 rounded-xl flex items-center justify-center mr-4">
+                <Syringe className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div>{immunization ? 'Update Immunization Record' : 'New Immunization Record'}</div>
+                <DialogDescription className="text-base text-gray-600 mt-1">
+                  {immunization ? 'Update vaccination record details' : 'Record new vaccination for student health tracking'}
+                </DialogDescription>
+              </div>
             </DialogTitle>
-            <DialogDescription>
-              {immunization ? 'Update the immunization record details' : 'Record a new immunization for a student'}
-            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Student Selection */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Student Information</h3>
-              {selectedStudent ? (
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">{selectedStudent.full_name}</h4>
-                      <div className="text-sm text-gray-600">
-                        <span>ID: {selectedStudent.student_id}</span>
-                        {selectedStudent.admission_number && (
-                          <span className="ml-4">Adm: {selectedStudent.admission_number}</span>
-                        )}
-                        <span className="ml-4">{selectedStudent.form_level?.replace('_', ' ')} {selectedStudent.stream}</span>
+            {/* Student Selection Card */}
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
+                  <User className="w-5 h-5 mr-2 text-blue-600" />
+                  Student Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {selectedStudent ? (
+                  <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-green-50 rounded-xl border border-blue-200">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center">
+                        <User className="w-8 h-8 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="text-xl font-bold text-gray-900">{selectedStudent.full_name}</h4>
+                        <div className="text-sm text-gray-600 space-x-4 mt-1">
+                          <span className="font-medium">Student ID: {selectedStudent.student_id}</span>
+                          {selectedStudent.admission_number && (
+                            <span className="font-medium">Admission: {selectedStudent.admission_number}</span>
+                          )}
+                          <span className="capitalize font-medium">
+                            {selectedStudent.form_level?.replace('_', ' ')} {selectedStudent.stream}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowStudentSelector(true)}
+                      size="lg"
+                      className="px-6"
+                    >
+                      Change Student
+                    </Button>
                   </div>
+                ) : (
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setShowStudentSelector(true)}
+                    className="w-full h-24 border-2 border-dashed border-gray-300 hover:border-green-400 hover:bg-green-50"
                   >
-                    Change Student
+                    <div className="text-center">
+                      <User className="w-10 h-10 mx-auto mb-2 text-gray-400" />
+                      <span className="text-lg font-medium text-gray-600">Select Student for Immunization</span>
+                      <p className="text-sm text-gray-500 mt-1">Choose a student to record vaccination</p>
+                    </div>
                   </Button>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowStudentSelector(true)}
-                  className="w-full h-16 border-dashed"
-                >
-                  <Search className="w-5 h-5 mr-2" />
-                  Select Student
-                </Button>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Immunization Details */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Immunization Details</h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="vaccine_name">Vaccine Name *</Label>
-                <Select value={formData.vaccine_name} onValueChange={(value) => setFormData({ ...formData, vaccine_name: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select vaccine" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {commonVaccines.map(vaccine => (
-                      <SelectItem key={vaccine} value={vaccine}>{vaccine}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formData.vaccine_name === 'Other' && (
-                  <Input
-                    placeholder="Enter vaccine name"
-                    value={formData.vaccine_name === 'Other' ? '' : formData.vaccine_name}
-                    onChange={(e) => setFormData({ ...formData, vaccine_name: e.target.value })}
-                    className="mt-2"
-                  />
                 )}
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Immunization Details Card */}
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Shield className="w-5 h-5 mr-2 text-green-600" />
+                  Immunization Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="date_administered">Date Administered *</Label>
-                  <Input
-                    id="date_administered"
-                    type="date"
-                    value={formData.date_administered}
-                    onChange={(e) => setFormData({ ...formData, date_administered: e.target.value })}
-                    required
-                  />
+                  <Label htmlFor="vaccine_name" className="text-sm font-semibold text-gray-700">
+                    Vaccine Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={formData.vaccine_name} onValueChange={handleVaccineChange}>
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Select vaccine type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {commonVaccines.map(vaccine => (
+                        <SelectItem key={vaccine} value={vaccine}>{vaccine}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formData.vaccine_name === 'Other' && (
+                    <Input
+                      placeholder="Enter specific vaccine name"
+                      value={customVaccine}
+                      onChange={(e) => setCustomVaccine(e.target.value)}
+                      className="mt-2 h-12"
+                      required
+                    />
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="date_administered" className="text-sm font-semibold text-gray-700">
+                      Date Administered <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="date_administered"
+                      type="date"
+                      value={formData.date_administered}
+                      onChange={(e) => setFormData({ ...formData, date_administered: e.target.value })}
+                      className="h-12"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="next_dose_date" className="text-sm font-semibold text-gray-700">Next Dose Due Date</Label>
+                    <Input
+                      id="next_dose_date"
+                      type="date"
+                      value={formData.next_dose_date}
+                      onChange={(e) => setFormData({ ...formData, next_dose_date: e.target.value })}
+                      className="h-12"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="batch_number" className="text-sm font-semibold text-gray-700">Batch/Lot Number</Label>
+                    <Input
+                      id="batch_number"
+                      value={formData.batch_number}
+                      onChange={(e) => setFormData({ ...formData, batch_number: e.target.value })}
+                      placeholder="Enter vaccine batch number"
+                      className="h-12"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="administered_by" className="text-sm font-semibold text-gray-700">Administered By</Label>
+                    <Input
+                      id="administered_by"
+                      value={formData.administered_by}
+                      onChange={(e) => setFormData({ ...formData, administered_by: e.target.value })}
+                      placeholder="Enter healthcare provider name"
+                      className="h-12"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="next_dose_date">Next Dose Date</Label>
-                  <Input
-                    id="next_dose_date"
-                    type="date"
-                    value={formData.next_dose_date}
-                    onChange={(e) => setFormData({ ...formData, next_dose_date: e.target.value })}
+                  <Label htmlFor="notes" className="text-sm font-semibold text-gray-700">Clinical Notes</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    rows={4}
+                    placeholder="Any adverse reactions, patient response, special instructions, or additional observations..."
+                    className="resize-none text-base"
                   />
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="batch_number">Batch Number</Label>
-                  <Input
-                    id="batch_number"
-                    value={formData.batch_number}
-                    onChange={(e) => setFormData({ ...formData, batch_number: e.target.value })}
-                    placeholder="Enter batch number"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="administered_by">Administered By</Label>
-                  <Input
-                    id="administered_by"
-                    value={formData.administered_by}
-                    onChange={(e) => setFormData({ ...formData, administered_by: e.target.value })}
-                    placeholder="Enter administrator name"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={3}
-                  placeholder="Any additional notes or observations..."
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2 pt-6 border-t">
-              <Button type="button" variant="outline" onClick={onClose}>
+            {/* Form Actions */}
+            <div className="flex justify-end space-x-4 pt-6 border-t bg-gray-50/50 -mx-6 px-6 py-6">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={onClose}
+                size="lg"
+                className="px-8"
+              >
+                <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? 'Saving...' : immunization ? 'Update Record' : 'Record Immunization'}
+              <Button 
+                type="submit" 
+                disabled={saving}
+                size="lg"
+                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-8"
+              >
+                {saving ? (
+                  <div className="w-4 h-4 mr-2 animate-spin rounded-full border-b-2 border-white"></div>
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                {immunization ? 'Update Immunization' : 'Record Immunization'}
               </Button>
             </div>
           </form>
