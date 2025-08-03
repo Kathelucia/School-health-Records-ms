@@ -90,7 +90,7 @@ const LoginPage = () => {
         try {
           await supabase.auth.signOut({ scope: 'global' });
         } catch (err) {
-          // Continue even if this fails
+          console.log('Signout error (expected):', err);
         }
 
         const { data, error } = await supabase.auth.signUp({
@@ -100,7 +100,8 @@ const LoginPage = () => {
             data: {
               full_name: fullName.trim(),
               role: role
-            }
+            },
+            emailRedirectTo: `${window.location.origin}/`
           }
         });
 
@@ -122,7 +123,9 @@ const LoginPage = () => {
             const { error: profileError } = await supabase
               .from('profiles')
               .insert({
+                id: data.user.id,
                 user_id: data.user.id,
+                email: email.trim(),
                 full_name: fullName.trim(),
                 user_role: role,
                 role: role
@@ -130,6 +133,8 @@ const LoginPage = () => {
             
             if (profileError) {
               console.error('Profile creation error:', profileError);
+            } else {
+              console.log('Profile created successfully');
             }
           } catch (profileErr) {
             console.error('Profile creation failed:', profileErr);
@@ -149,7 +154,7 @@ const LoginPage = () => {
         try {
           await supabase.auth.signOut({ scope: 'global' });
         } catch (err) {
-          // Continue even if this fails
+          console.log('Signout error (expected):', err);
         }
         
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -183,57 +188,57 @@ const LoginPage = () => {
   };
 
   const roles = [
-    { value: 'nurse', label: 'School Nurse', icon: Heart },
-    { value: 'medical_officer', label: 'Medical Officer', icon: Stethoscope },
-    { value: 'admin', label: 'System Administrator', icon: Shield },
-    { value: 'other_staff', label: 'Other Medical Staff', icon: UserPlus }
+    { value: 'nurse', label: 'School Nurse', icon: Heart, description: 'Manage student health records and clinic visits' },
+    { value: 'admin', label: 'System Administrator', icon: Shield, description: 'Full system access and user management' }
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-lg border-0">
-        <CardHeader className="text-center space-y-4 pb-6">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center">
+      <Card className="w-full max-w-md shadow-xl border-0 bg-white">
+        <CardHeader className="text-center space-y-4 pb-6 bg-white">
+          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center shadow-lg">
             <Heart className="w-8 h-8 text-white" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-gray-900">SHRMS</CardTitle>
-            <CardDescription className="text-gray-600">
+            <CardTitle className="text-3xl font-bold text-gray-900">SHRMS</CardTitle>
+            <CardDescription className="text-gray-600 text-lg">
               School Health Records Management System
             </CardDescription>
           </div>
         </CardHeader>
         
-        <CardContent>
-          <form onSubmit={handleAuth} className="space-y-4">
+        <CardContent className="bg-white">
+          <form onSubmit={handleAuth} className="space-y-6">
             {isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="fullName" className="text-sm font-semibold text-gray-700">Full Name</Label>
                 <Input
                   id="fullName"
                   type="text"
                   placeholder="Enter your full name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
+                  className="h-12 bg-white border-gray-300"
                   required
                 />
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email" className="text-sm font-semibold text-gray-700">Email Address</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="your.email@school.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="h-12 bg-white border-gray-300"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-sm font-semibold text-gray-700">Password</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -241,7 +246,7 @@ const LoginPage = () => {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pr-10"
+                  className="pr-10 h-12 bg-white border-gray-300"
                   required
                 />
                 <button
@@ -257,7 +262,7 @@ const LoginPage = () => {
             {isSignUp && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">Confirm Password</Label>
                   <div className="relative">
                     <Input
                       id="confirmPassword"
@@ -265,7 +270,7 @@ const LoginPage = () => {
                       placeholder="Confirm your password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pr-10"
+                      className="pr-10 h-12 bg-white border-gray-300"
                       required
                     />
                     <button
@@ -279,19 +284,22 @@ const LoginPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role" className="text-sm font-semibold text-gray-700">Role</Label>
                   <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 bg-white border-gray-300">
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white">
                       {roles.map((roleOption) => {
                         const Icon = roleOption.icon;
                         return (
-                          <SelectItem key={roleOption.value} value={roleOption.value}>
-                            <div className="flex items-center space-x-2">
-                              <Icon className="w-4 h-4" />
-                              <span>{roleOption.label}</span>
+                          <SelectItem key={roleOption.value} value={roleOption.value} className="hover:bg-gray-50">
+                            <div className="flex items-start space-x-3 py-2">
+                              <Icon className="w-5 h-5 mt-0.5 text-blue-600" />
+                              <div>
+                                <span className="font-semibold text-gray-900">{roleOption.label}</span>
+                                <p className="text-xs text-gray-500 mt-1">{roleOption.description}</p>
+                              </div>
                             </div>
                           </SelectItem>
                         );
@@ -304,21 +312,21 @@ const LoginPage = () => {
 
             <Button 
               type="submit" 
-              className="w-full bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700" 
+              className="w-full h-12 bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-semibold" 
               disabled={loading}
             >
               {loading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
               ) : isSignUp ? (
-                <UserPlus className="w-4 h-4 mr-2" />
+                <UserPlus className="w-5 h-5 mr-2" />
               ) : (
-                <LogIn className="w-4 h-4 mr-2" />
+                <LogIn className="w-5 h-5 mr-2" />
               )}
               {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-8 text-center">
             <button
               type="button"
               onClick={() => {
@@ -329,7 +337,7 @@ const LoginPage = () => {
                 setFullName('');
                 setRole('nurse');
               }}
-              className="text-blue-600 hover:text-blue-700 text-sm"
+              className="text-blue-600 hover:text-blue-700 font-medium text-sm"
             >
               {isSignUp 
                 ? 'Already have an account? Sign in' 
@@ -338,7 +346,7 @@ const LoginPage = () => {
             </button>
           </div>
 
-          <div className="mt-6 text-xs text-gray-500 text-center">
+          <div className="mt-8 text-xs text-gray-500 text-center">
             <div className="flex items-center justify-center space-x-2">
               <Shield className="w-3 h-3" />
               <p>Secure access for authorized school personnel only</p>

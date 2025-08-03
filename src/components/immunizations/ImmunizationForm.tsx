@@ -75,8 +75,8 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
           .eq('id', user.id)
           .single();
         setUserProfile(profile);
-        if (!immunization) {
-          setFormData(prev => ({ ...prev, administered_by: profile?.full_name || '' }));
+        if (!immunization && profile) {
+          setFormData(prev => ({ ...prev, administered_by: profile.full_name || '' }));
         }
       }
     } catch (error) {
@@ -102,16 +102,17 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
 
   const handleStudentSelect = (student: any) => {
     setSelectedStudent(student);
-    setFormData({ ...formData, student_id: student.id });
+    setFormData(prev => ({ ...prev, student_id: student.id }));
+    setShowStudentSelector(false);
   };
 
   const handleVaccineChange = (value: string) => {
     if (value === 'Other') {
       setCustomVaccine('');
-      setFormData({ ...formData, vaccine_name: '' });
+      setFormData(prev => ({ ...prev, vaccine_name: '' }));
     } else {
       setCustomVaccine('');
-      setFormData({ ...formData, vaccine_name: value });
+      setFormData(prev => ({ ...prev, vaccine_name: value }));
     }
   };
 
@@ -123,7 +124,8 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
       return;
     }
 
-    if (!formData.vaccine_name && !customVaccine) {
+    const vaccineName = customVaccine || formData.vaccine_name;
+    if (!vaccineName) {
       toast.error('Please specify the vaccine name');
       return;
     }
@@ -133,8 +135,10 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
     try {
       const submitData = {
         ...formData,
-        vaccine_name: customVaccine || formData.vaccine_name
+        vaccine_name: vaccineName
       };
+
+      console.log('Submitting immunization data:', submitData);
 
       if (immunization) {
         const { error } = await supabase
@@ -142,21 +146,27 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
           .update(submitData)
           .eq('id', immunization.id);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
         toast.success('Immunization record updated successfully');
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('immunizations')
           .insert([submitData]);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
         toast.success('Immunization recorded successfully');
       }
       
       onSave();
     } catch (error: any) {
       console.error('Error saving immunization:', error);
-      toast.error('Error saving immunization: ' + error.message);
+      toast.error('Error saving immunization: ' + (error.message || 'Unknown error'));
     } finally {
       setSaving(false);
     }
@@ -180,7 +190,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
     <>
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white">
-          <DialogHeader className="pb-6 bg-white">
+          <DialogHeader className="pb-6 bg-white border-b">
             <DialogTitle className="flex items-center text-2xl font-bold text-gray-900">
               <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mr-4">
                 <Syringe className="w-6 h-6 text-white" />
@@ -194,9 +204,9 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-6 bg-white">
+          <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6">
             {/* Student Selection Card */}
-            <Card className="bg-white border-gray-200">
+            <Card className="bg-white border-gray-200 shadow-sm">
               <CardHeader className="bg-white">
                 <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
                   <User className="w-5 h-5 mr-2 text-blue-600" />
@@ -251,7 +261,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
             </Card>
 
             {/* Immunization Details Card */}
-            <Card className="bg-white border-gray-200">
+            <Card className="bg-white border-gray-200 shadow-sm">
               <CardHeader className="bg-white">
                 <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
                   <Shield className="w-5 h-5 mr-2 text-green-600" />
@@ -293,7 +303,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                       id="date_administered"
                       type="date"
                       value={formData.date_administered}
-                      onChange={(e) => setFormData({ ...formData, date_administered: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, date_administered: e.target.value }))}
                       className="h-12 bg-white border-gray-300"
                       required
                     />
@@ -305,7 +315,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                       id="next_dose_date"
                       type="date"
                       value={formData.next_dose_date}
-                      onChange={(e) => setFormData({ ...formData, next_dose_date: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, next_dose_date: e.target.value }))}
                       className="h-12 bg-white border-gray-300"
                     />
                   </div>
@@ -317,7 +327,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                     <Input
                       id="batch_number"
                       value={formData.batch_number}
-                      onChange={(e) => setFormData({ ...formData, batch_number: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, batch_number: e.target.value }))}
                       placeholder="Enter vaccine batch number"
                       className="h-12 bg-white border-gray-300"
                     />
@@ -328,7 +338,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                     <Input
                       id="administered_by"
                       value={formData.administered_by}
-                      onChange={(e) => setFormData({ ...formData, administered_by: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, administered_by: e.target.value }))}
                       placeholder="Enter healthcare provider name"
                       className="h-12 bg-white border-gray-300"
                     />
@@ -340,7 +350,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
                   <Textarea
                     id="notes"
                     value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                     rows={4}
                     placeholder="Any adverse reactions, patient response, special instructions, or additional observations..."
                     className="resize-none text-base bg-white border-gray-300"
@@ -350,7 +360,7 @@ const ImmunizationForm = ({ immunization, student, onClose, onSave, requirements
             </Card>
 
             {/* Form Actions */}
-            <div className="flex justify-end space-x-4 pt-6 border-t bg-white px-6 py-6">
+            <div className="flex justify-end space-x-4 pt-6 border-t bg-white">
               <Button 
                 type="button" 
                 variant="outline" 
