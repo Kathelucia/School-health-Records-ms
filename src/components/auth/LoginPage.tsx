@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Heart, UserPlus, LogIn, Eye, EyeOff, Stethoscope, Shield } from 'lucide-react';
+import { Heart, UserPlus, LogIn, Eye, EyeOff, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -33,22 +33,15 @@ const LoginPage = () => {
     }
   };
 
-  const cleanupAuthState = () => {
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
-    Object.keys(sessionStorage || {}).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        sessionStorage.removeItem(key);
-      }
-    });
-  };
-
   const validateForm = () => {
     if (!email || !password) {
       toast.error('Email and password are required');
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error('Please enter a valid email address');
       return false;
     }
 
@@ -86,13 +79,11 @@ const LoginPage = () => {
 
     try {
       if (isSignUp) {
-        cleanupAuthState();
-        try {
-          await supabase.auth.signOut({ scope: 'global' });
-        } catch (err) {
-          console.log('Signout error (expected):', err);
-        }
-
+        // Clear any existing session
+        await supabase.auth.signOut();
+        
+        console.log('Attempting signup with:', { email, fullName, role });
+        
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
@@ -100,8 +91,7 @@ const LoginPage = () => {
             data: {
               full_name: fullName.trim(),
               role: role
-            },
-            emailRedirectTo: `${window.location.origin}/`
+            }
           }
         });
 
@@ -117,46 +107,17 @@ const LoginPage = () => {
           }
         } else if (data.user) {
           console.log('User created successfully:', data.user.id);
-          
-          // Insert profile data
-          try {
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .insert({
-                id: data.user.id,
-                user_id: data.user.id,
-                email: email.trim(),
-                full_name: fullName.trim(),
-                user_role: role,
-                role: role
-              });
-            
-            if (profileError) {
-              console.error('Profile creation error:', profileError);
-            } else {
-              console.log('Profile created successfully');
-            }
-          } catch (profileErr) {
-            console.error('Profile creation failed:', profileErr);
-          }
-
           toast.success('Account created successfully! Please check your email to verify your account.');
-          setIsSignUp(false);
-          // Clear form
+          // Reset form
           setEmail('');
           setPassword('');
           setConfirmPassword('');
           setFullName('');
           setRole('nurse');
+          setIsSignUp(false);
         }
       } else {
-        cleanupAuthState();
-        try {
-          await supabase.auth.signOut({ scope: 'global' });
-        } catch (err) {
-          console.log('Signout error (expected):', err);
-        }
-        
+        // Sign in
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
@@ -173,10 +134,8 @@ const LoginPage = () => {
           }
         } else if (data.user) {
           console.log('User signed in successfully:', data.user.id);
-          toast.success('Welcome! Loading your dashboard...');
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 100);
+          toast.success('Welcome! Redirecting to dashboard...');
+          navigate('/');
         }
       }
     } catch (error: any) {
@@ -188,14 +147,24 @@ const LoginPage = () => {
   };
 
   const roles = [
-    { value: 'nurse', label: 'School Nurse', icon: Heart, description: 'Manage student health records and clinic visits' },
-    { value: 'admin', label: 'System Administrator', icon: Shield, description: 'Full system access and user management' }
+    { 
+      value: 'nurse', 
+      label: 'School Nurse', 
+      icon: Heart, 
+      description: 'Manage student health records, clinic visits, and medical care'
+    },
+    { 
+      value: 'admin', 
+      label: 'System Administrator', 
+      icon: Shield, 
+      description: 'Full system access, user management, and system configuration'
+    }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-xl border-0 bg-white">
-        <CardHeader className="text-center space-y-4 pb-6 bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-2xl border-0 bg-white">
+        <CardHeader className="text-center space-y-4 pb-6">
           <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center shadow-lg">
             <Heart className="w-8 h-8 text-white" />
           </div>
@@ -207,38 +176,44 @@ const LoginPage = () => {
           </div>
         </CardHeader>
         
-        <CardContent className="bg-white">
+        <CardContent className="space-y-6">
           <form onSubmit={handleAuth} className="space-y-6">
             {isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-sm font-semibold text-gray-700">Full Name</Label>
+                <Label htmlFor="fullName" className="text-sm font-semibold text-gray-700">
+                  Full Name *
+                </Label>
                 <Input
                   id="fullName"
                   type="text"
                   placeholder="Enter your full name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="h-12 bg-white border-gray-300"
-                  required
+                  className="h-12 bg-white border-gray-300 focus:border-blue-500"
+                  required={isSignUp}
                 />
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold text-gray-700">Email Address</Label>
+              <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+                Email Address *
+              </Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="your.email@school.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-12 bg-white border-gray-300"
+                className="h-12 bg-white border-gray-300 focus:border-blue-500"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-semibold text-gray-700">Password</Label>
+              <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+                Password *
+              </Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -246,7 +221,7 @@ const LoginPage = () => {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pr-10 h-12 bg-white border-gray-300"
+                  className="pr-10 h-12 bg-white border-gray-300 focus:border-blue-500"
                   required
                 />
                 <button
@@ -262,7 +237,9 @@ const LoginPage = () => {
             {isSignUp && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">Confirm Password</Label>
+                  <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">
+                    Confirm Password *
+                  </Label>
                   <div className="relative">
                     <Input
                       id="confirmPassword"
@@ -270,7 +247,7 @@ const LoginPage = () => {
                       placeholder="Confirm your password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pr-10 h-12 bg-white border-gray-300"
+                      className="pr-10 h-12 bg-white border-gray-300 focus:border-blue-500"
                       required
                     />
                     <button
@@ -284,9 +261,11 @@ const LoginPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="role" className="text-sm font-semibold text-gray-700">Role</Label>
+                  <Label htmlFor="role" className="text-sm font-semibold text-gray-700">
+                    Role *
+                  </Label>
                   <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger className="h-12 bg-white border-gray-300">
+                    <SelectTrigger className="h-12 bg-white border-gray-300 focus:border-blue-500">
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
                     <SelectContent className="bg-white">
@@ -312,32 +291,41 @@ const LoginPage = () => {
 
             <Button 
               type="submit" 
-              className="w-full h-12 bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-semibold" 
+              className="w-full h-12 bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-semibold shadow-lg" 
               disabled={loading}
             >
               {loading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Processing...
+                </>
               ) : isSignUp ? (
-                <UserPlus className="w-5 h-5 mr-2" />
+                <>
+                  <UserPlus className="w-5 h-5 mr-2" />
+                  Create Account
+                </>
               ) : (
-                <LogIn className="w-5 h-5 mr-2" />
+                <>
+                  <LogIn className="w-5 h-5 mr-2" />
+                  Sign In
+                </>
               )}
-              {loading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign In'}
             </Button>
           </form>
 
-          <div className="mt-8 text-center">
+          <div className="text-center">
             <button
               type="button"
               onClick={() => {
                 setIsSignUp(!isSignUp);
+                // Reset form when switching
                 setEmail('');
                 setPassword('');
                 setConfirmPassword('');
                 setFullName('');
                 setRole('nurse');
               }}
-              className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+              className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
             >
               {isSignUp 
                 ? 'Already have an account? Sign in' 
@@ -346,11 +334,12 @@ const LoginPage = () => {
             </button>
           </div>
 
-          <div className="mt-8 text-xs text-gray-500 text-center">
+          <div className="text-xs text-gray-500 text-center border-t pt-4">
             <div className="flex items-center justify-center space-x-2">
               <Shield className="w-3 h-3" />
               <p>Secure access for authorized school personnel only</p>
             </div>
+            <p className="mt-2">🇰🇪 Kenyan School Health Management System</p>
           </div>
         </CardContent>
       </Card>
