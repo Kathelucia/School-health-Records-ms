@@ -16,14 +16,18 @@ import {
 interface DatePickerWithRangeProps {
   date?: DateRange
   onDateChange?: (date: DateRange | undefined) => void
+  setDate?: (date: DateRange | undefined) => void
   className?: string
 }
 
 export function DatePickerWithRange({
   date,
   onDateChange,
+  setDate,
   className,
 }: DatePickerWithRangeProps) {
+  const handleDateChange = onDateChange || setDate;
+
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>
@@ -32,7 +36,7 @@ export function DatePickerWithRange({
             id="date"
             variant={"outline"}
             className={cn(
-              "w-[300px] justify-start text-left font-normal",
+              "w-full justify-start text-left font-normal bg-white border-gray-300 hover:bg-gray-50",
               !date && "text-muted-foreground"
             )}
           >
@@ -51,13 +55,13 @@ export function DatePickerWithRange({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-auto p-0 bg-white border border-gray-200 shadow-lg" align="start">
           <Calendar
             initialFocus
             mode="range"
             defaultMonth={date?.from}
             selected={date}
-            onSelect={onDateChange}
+            onSelect={handleDateChange}
             numberOfMonths={2}
             className="pointer-events-auto"
           />
