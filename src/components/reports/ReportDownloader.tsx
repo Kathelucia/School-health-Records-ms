@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -306,7 +305,7 @@ const ReportDownloader = ({ userRole }: ReportDownloaderProps) => {
               <>
                 <Download className="w-4 h-4 mr-2" />
                 Download Report
-              </Button>
+              </>
             )}
           </Button>
 
