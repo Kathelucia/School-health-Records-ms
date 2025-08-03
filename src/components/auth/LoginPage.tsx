@@ -70,6 +70,20 @@ const LoginPage = () => {
     return true;
   };
 
+  const cleanupAuthState = () => {
+    // Clear any existing auth state
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+    Object.keys(sessionStorage || {}).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -79,8 +93,13 @@ const LoginPage = () => {
 
     try {
       if (isSignUp) {
-        // Clear any existing session
-        await supabase.auth.signOut();
+        // Clean up any existing session first
+        cleanupAuthState();
+        try {
+          await supabase.auth.signOut({ scope: 'global' });
+        } catch (err) {
+          // Continue even if this fails
+        }
         
         console.log('Attempting signup with:', { email, fullName, role });
         
@@ -88,6 +107,7 @@ const LoginPage = () => {
           email: email.trim(),
           password,
           options: {
+            emailRedirectTo: `${window.location.origin}/`,
             data: {
               full_name: fullName.trim(),
               role: role
@@ -102,13 +122,19 @@ const LoginPage = () => {
             setIsSignUp(false);
           } else if (error.message.includes('Invalid email')) {
             toast.error('Please enter a valid email address.');
+          } else if (error.message.includes('Password should be at least')) {
+            toast.error('Password should be at least 6 characters long.');
           } else {
-            toast.error(`Account creation failed: ${error.message}`);
+            toast.error(`Registration failed: ${error.message}`);
           }
         } else if (data.user) {
           console.log('User created successfully:', data.user.id);
-          toast.success('Account created successfully! Please check your email to verify your account.');
-          // Reset form
+          if (data.user.email_confirmed_at) {
+            toast.success('Account created successfully! You can now sign in.');
+          } else {
+            toast.success('Account created! Please check your email to verify your account before signing in.');
+          }
+          // Reset form and switch to login
           setEmail('');
           setPassword('');
           setConfirmPassword('');
@@ -118,6 +144,8 @@ const LoginPage = () => {
         }
       } else {
         // Sign in
+        cleanupAuthState();
+        
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
@@ -132,10 +160,10 @@ const LoginPage = () => {
           } else {
             toast.error(`Sign in failed: ${error.message}`);
           }
-        } else if (data.user) {
+        } else if (data.user && data.session) {
           console.log('User signed in successfully:', data.user.id);
           toast.success('Welcome! Redirecting to dashboard...');
-          navigate('/');
+          window.location.href = '/';
         }
       }
     } catch (error: any) {

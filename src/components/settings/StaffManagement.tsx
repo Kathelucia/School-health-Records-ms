@@ -12,8 +12,16 @@ const roleOptions = [
   { value: 'nurse', label: 'School Nurse' }
 ];
 
+interface StaffProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  user_role: string;
+}
+
 export default function StaffManagement() {
-  const [staff, setStaff] = useState([]);
+  const [staff, setStaff] = useState<StaffProfile[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -23,17 +31,40 @@ export default function StaffManagement() {
 
   const fetchStaff = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('profiles').select('*').order('full_name');
-    if (!error && data) setStaff(data);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, role, user_role')
+      .order('full_name');
+    
+    if (!error && data) {
+      setStaff(data);
+    } else {
+      console.error('Error fetching staff:', error);
+      toast.error('Failed to load staff');
+    }
     setLoading(false);
   };
 
-  const handleRoleChange = async (id, newRole) => {
-    const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', id);
+  const handleRoleChange = async (id: string, newRole: string) => {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        role: newRole,
+        user_role: newRole 
+      })
+      .eq('id', id);
+    
     if (!error) {
-      setStaff(staff => staff.map(s => s.id === id ? { ...s, role: newRole } : s));
-      toast.success('Role updated');
+      setStaff(staff => 
+        staff.map(s => 
+          s.id === id 
+            ? { ...s, role: newRole, user_role: newRole } 
+            : s
+        )
+      );
+      toast.success('Role updated successfully');
     } else {
+      console.error('Error updating role:', error);
       toast.error('Failed to update role');
     }
   };
@@ -58,25 +89,35 @@ export default function StaffManagement() {
             className="mb-4"
           />
           {loading ? (
-            <div>Loading staff...</div>
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-2">Loading staff...</span>
+            </div>
           ) : filteredStaff.length === 0 ? (
-            <div>No staff found.</div>
+            <div className="text-center py-8 text-gray-500">
+              {search ? `No staff found matching "${search}"` : 'No staff found.'}
+            </div>
           ) : (
             <div className="space-y-4">
-              {filteredStaff.map(staff => (
-                <div key={staff.id} className="flex flex-col md:flex-row md:items-center md:justify-between border-b pb-2 gap-2">
+              {filteredStaff.map(staffMember => (
+                <div key={staffMember.id} className="flex flex-col md:flex-row md:items-center md:justify-between border-b pb-4 gap-2">
                   <div>
-                    <div className="font-semibold">{staff.full_name}</div>
-                    <div className="text-xs text-gray-500">{staff.email}</div>
+                    <div className="font-semibold">{staffMember.full_name}</div>
+                    <div className="text-sm text-gray-500">{staffMember.email}</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Select value={staff.role} onValueChange={value => handleRoleChange(staff.id, value)}>
+                    <Select 
+                      value={staffMember.user_role || staffMember.role} 
+                      onValueChange={value => handleRoleChange(staffMember.id, value)}
+                    >
                       <SelectTrigger className="w-48">
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent>
                         {roleOptions.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
