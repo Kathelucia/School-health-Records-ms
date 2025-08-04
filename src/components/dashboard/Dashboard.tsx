@@ -19,6 +19,9 @@ import StaffProfiles from '@/components/staff/StaffProfiles';
 import BulkUpload from '@/components/database/BulkUpload';
 import AuditLogs from '@/components/audit/AuditLogs';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle, Shield } from 'lucide-react';
 
 interface DashboardProps {
   userRole: string;
@@ -27,24 +30,39 @@ interface DashboardProps {
 const Dashboard = ({ userRole }: DashboardProps) => {
   const [activeView, setActiveView] = useState('dashboard');
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUserProfile();
   }, []);
 
   const fetchUserProfile = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
+        console.log('Fetching profile for user:', user.id);
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();
-        setUserProfile(profile);
+        
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+          setError('Failed to load user profile. Please try refreshing the page.');
+        } else {
+          console.log('Profile loaded:', profile);
+          setUserProfile(profile);
+        }
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      setError('Failed to load user profile. Please try refreshing the page.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,33 +71,133 @@ const Dashboard = ({ userRole }: DashboardProps) => {
   };
 
   const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading dashboard...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="p-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      );
+    }
+
+    const isAdmin = userRole === 'admin' || userProfile?.user_role === 'admin';
+
     switch (activeView) {
       case 'dashboard':
-        return <DashboardHome userRole={userRole} onNavigate={handleNavigate} />;
+        return (
+          <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Welcome to SHRMS Dashboard
+              </h1>
+              <p className="text-gray-600">
+                School Health Records Management System - 
+                {isAdmin ? ' Administrator Access' : ' School Nurse Access'}
+              </p>
+              {isAdmin && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <Shield className="w-5 h-5 text-red-600" />
+                    <span className="text-red-800 font-semibold">Administrator Privileges Active</span>
+                  </div>
+                  <p className="text-red-700 text-sm mt-1">
+                    You have full system access including staff management and system settings.
+                  </p>
+                </div>
+              )}
+            </div>
+            <DashboardHome userRole={userRole} onNavigate={handleNavigate} />
+          </div>
+        );
       
       case 'students':
-        return <StudentProfiles userRole={userRole} />;
+        return (
+          <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Student Records</h1>
+              <p className="text-gray-600">Manage student profiles and health information</p>
+            </div>
+            <StudentProfiles userRole={userRole} />
+          </div>
+        );
       
       case 'clinic':
-        return <ClinicVisits userRole={userRole} />;
+        return (
+          <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Clinic Visits</h1>
+              <p className="text-gray-600">Record and manage student clinic visits</p>
+            </div>
+            <ClinicVisits userRole={userRole} />
+          </div>
+        );
       
       case 'medications':
-        return <MedicationInventorySystem userRole={userRole} />;
+        return (
+          <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Medication Inventory</h1>
+              <p className="text-gray-600">Manage medication stock and dispensing</p>
+            </div>
+            <MedicationInventorySystem userRole={userRole} />
+          </div>
+        );
       
       case 'immunizations':
-        return <ImmunizationManagement userRole={userRole} />;
+        return (
+          <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Immunization Management</h1>
+              <p className="text-gray-600">Track student vaccinations and compliance</p>
+            </div>
+            <ImmunizationManagement userRole={userRole} />
+          </div>
+        );
       
       case 'insurance':
-        return <InsuranceManagement userRole={userRole} />;
+        return (
+          <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Insurance Management</h1>
+              <p className="text-gray-600">Manage NHIF/SHA insurance records</p>
+            </div>
+            <InsuranceManagement userRole={userRole} />
+          </div>
+        );
       
       case 'staff':
-        return <StaffProfiles userRole={userRole} />;
+        return (
+          <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Staff Profiles</h1>
+              <p className="text-gray-600">Manage school staff information</p>
+            </div>
+            <StaffProfiles userRole={userRole} />
+          </div>
+        );
       
       case 'reports':
         return (
           <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
+              <p className="text-gray-600">Generate health reports and analytics</p>
+            </div>
             <Tabs defaultValue="analytics" className="space-y-4">
-              <TabsList>
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="analytics">Analytics & Reports</TabsTrigger>
                 <TabsTrigger value="downloads">Download Reports</TabsTrigger>
               </TabsList>
@@ -96,20 +214,47 @@ const Dashboard = ({ userRole }: DashboardProps) => {
         );
       
       case 'notifications':
-        return <NotificationCenter userRole={userRole} />;
-      
-      case 'bulk-upload':
-        return <BulkUpload userRole={userRole} />;
-      
-      case 'audit':
-        return <AuditLogs userRole={userRole} />;
-      
-      case 'settings':
-        const isAdmin = userRole === 'admin';
         return (
           <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
+              <p className="text-gray-600">View system notifications and alerts</p>
+            </div>
+            <NotificationCenter userRole={userRole} />
+          </div>
+        );
+      
+      case 'bulk-upload':
+        return (
+          <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Bulk Data Upload</h1>
+              <p className="text-gray-600">Import data from CSV files</p>
+            </div>
+            <BulkUpload userRole={userRole} />
+          </div>
+        );
+      
+      case 'audit':
+        return (
+          <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
+              <p className="text-gray-600">System activity and change logs</p>
+            </div>
+            <AuditLogs userRole={userRole} />
+          </div>
+        );
+      
+      case 'settings':
+        return (
+          <div className="p-6">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+              <p className="text-gray-600">Manage system and profile settings</p>
+            </div>
             <Tabs defaultValue="profile" className="space-y-4">
-              <TabsList>
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="profile">Profile Settings</TabsTrigger>
                 {isAdmin && <TabsTrigger value="staff">Staff Management</TabsTrigger>}
                 <TabsTrigger value="contact">Contact Admin</TabsTrigger>
@@ -133,7 +278,24 @@ const Dashboard = ({ userRole }: DashboardProps) => {
         );
       
       default:
-        return <DashboardHome userRole={userRole} onNavigate={handleNavigate} />;
+        return (
+          <div className="p-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Page Not Found</CardTitle>
+                <CardDescription>The requested page could not be found.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <button 
+                  onClick={() => setActiveView('dashboard')}
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  Return to Dashboard
+                </button>
+              </CardContent>
+            </Card>
+          </div>
+        );
     }
   };
 

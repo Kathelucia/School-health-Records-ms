@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Heart, UserPlus, LogIn, Eye, EyeOff, Shield } from 'lucide-react';
+import { Heart, UserPlus, LogIn, Eye, EyeOff, Shield, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const LoginPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -20,6 +21,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,81 +29,68 @@ const LoginPage = () => {
   }, []);
 
   const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      navigate('/');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Error checking user session:', error);
     }
   };
 
-  const validateForm = () => {
-    if (!email || !password) {
-      toast.error('Email and password are required');
-      return false;
+  const validateForm = (): string[] => {
+    const validationErrors: string[] = [];
+
+    if (!email.trim()) {
+      validationErrors.push('Email is required');
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        validationErrors.push('Please enter a valid email address');
+      }
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      toast.error('Please enter a valid email address');
-      return false;
-    }
-
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters long');
-      return false;
+    if (!password) {
+      validationErrors.push('Password is required');
+    } else if (password.length < 6) {
+      validationErrors.push('Password must be at least 6 characters long');
     }
 
     if (isSignUp) {
       if (!fullName.trim()) {
-        toast.error('Full name is required');
-        return false;
+        validationErrors.push('Full name is required');
       }
 
-      if (password !== confirmPassword) {
-        toast.error('Passwords do not match');
-        return false;
+      if (!confirmPassword) {
+        validationErrors.push('Please confirm your password');
+      } else if (password !== confirmPassword) {
+        validationErrors.push('Passwords do not match');
       }
 
       if (!role) {
-        toast.error('Please select a role');
-        return false;
+        validationErrors.push('Please select a role');
       }
     }
 
-    return true;
-  };
-
-  const cleanupAuthState = () => {
-    // Clear any existing auth state
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
-    Object.keys(sessionStorage || {}).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        sessionStorage.removeItem(key);
-      }
-    });
+    return validationErrors;
   };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
 
+    setErrors([]);
     setLoading(true);
 
     try {
       if (isSignUp) {
-        // Clean up any existing session first
-        cleanupAuthState();
-        try {
-          await supabase.auth.signOut({ scope: 'global' });
-        } catch (err) {
-          console.log('No existing session to sign out from');
-        }
-        
-        console.log('Starting signup process with:', { email, fullName, role });
+        console.log('Starting signup process for:', email);
         
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
@@ -115,30 +104,17 @@ const LoginPage = () => {
           }
         });
 
-        console.log('Signup response:', { data, error });
-
         if (error) {
           console.error('Signup error:', error);
           if (error.message.includes('User already registered')) {
-            toast.error('This email is already registered. Please sign in instead.');
+            setErrors(['This email is already registered. Please sign in instead.']);
             setIsSignUp(false);
-          } else if (error.message.includes('Invalid email')) {
-            toast.error('Please enter a valid email address.');
-          } else if (error.message.includes('Password should be at least')) {
-            toast.error('Password should be at least 6 characters long.');
-          } else if (error.message.includes('database')) {
-            toast.error('Database error. Please contact support if this persists.');
-            console.error('Database error details:', error);
           } else {
-            toast.error(`Registration failed: ${error.message}`);
+            setErrors([`Registration failed: ${error.message}`]);
           }
         } else if (data.user) {
           console.log('User created successfully:', data.user.id);
-          if (data.user.email_confirmed_at) {
-            toast.success('Account created successfully! You can now sign in.');
-          } else {
-            toast.success('Account created! Please check your email to verify your account before signing in.');
-          }
+          toast.success('Account created successfully! You can now sign in.');
           // Reset form and switch to login
           setEmail('');
           setPassword('');
@@ -148,9 +124,6 @@ const LoginPage = () => {
           setIsSignUp(false);
         }
       } else {
-        // Sign in logic
-        cleanupAuthState();
-        
         console.log('Attempting sign in for:', email);
         
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -161,22 +134,21 @@ const LoginPage = () => {
         if (error) {
           console.error('Login error:', error);
           if (error.message.includes('Invalid login credentials')) {
-            toast.error('Invalid email or password. Please check your credentials.');
+            setErrors(['Invalid email or password. Please check your credentials.']);
           } else if (error.message.includes('Email not confirmed')) {
-            toast.error('Please verify your email address before signing in.');
+            setErrors(['Please verify your email address before signing in.']);
           } else {
-            toast.error(`Sign in failed: ${error.message}`);
+            setErrors([`Sign in failed: ${error.message}`]);
           }
         } else if (data.user && data.session) {
           console.log('User signed in successfully:', data.user.id);
           toast.success('Welcome! Redirecting to dashboard...');
-          // Use navigate instead of window.location.href for proper routing
           navigate('/');
         }
       }
     } catch (error: any) {
       console.error('Auth error:', error);
-      toast.error('Authentication failed. Please try again.');
+      setErrors(['Authentication failed. Please try again.']);
     } finally {
       setLoading(false);
     }
@@ -213,6 +185,19 @@ const LoginPage = () => {
         </CardHeader>
         
         <CardContent className="space-y-6">
+          {errors.length > 0 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <ul className="list-disc list-inside space-y-1">
+                  {errors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleAuth} className="space-y-6">
             {isSignUp && (
               <div className="space-y-2">
@@ -354,7 +339,7 @@ const LoginPage = () => {
               type="button"
               onClick={() => {
                 setIsSignUp(!isSignUp);
-                // Reset form when switching
+                setErrors([]);
                 setEmail('');
                 setPassword('');
                 setConfirmPassword('');
