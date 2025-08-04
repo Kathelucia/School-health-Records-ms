@@ -31,39 +31,50 @@ export default function StaffManagement() {
 
   const fetchStaff = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, email, role, user_role')
-      .order('full_name');
-    
-    if (!error && data) {
-      setStaff(data);
-    } else {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role, user_role')
+        .order('full_name');
+      
+      if (error) {
+        console.error('Error fetching staff:', error);
+        toast.error('Failed to load staff');
+      } else if (data) {
+        setStaff(data);
+      }
+    } catch (error) {
       console.error('Error fetching staff:', error);
       toast.error('Failed to load staff');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleRoleChange = async (id: string, newRole: string) => {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ 
-        role: newRole,
-        user_role: newRole 
-      })
-      .eq('id', id);
-    
-    if (!error) {
-      setStaff(staff => 
-        staff.map(s => 
-          s.id === id 
-            ? { ...s, role: newRole, user_role: newRole } 
-            : s
-        )
-      );
-      toast.success('Role updated successfully');
-    } else {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          role: newRole,
+          user_role: newRole 
+        })
+        .eq('id', id);
+      
+      if (error) {
+        console.error('Error updating role:', error);
+        toast.error('Failed to update role');
+      } else {
+        setStaff(staff => 
+          staff.map(s => 
+            s.id === id 
+              ? { ...s, role: newRole, user_role: newRole } 
+              : s
+          )
+        );
+        toast.success('Role updated successfully');
+      }
+    } catch (error) {
       console.error('Error updating role:', error);
       toast.error('Failed to update role');
     }
