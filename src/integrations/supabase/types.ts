@@ -415,7 +415,7 @@ export type Database = {
           is_active?: boolean | null
           nhif_number?: string | null
           phone_number?: string | null
-          role: Database["public"]["Enums"]["user_role"]
+          role?: Database["public"]["Enums"]["user_role"]
           sha_number?: string | null
           updated_at?: string | null
           user_id?: string | null

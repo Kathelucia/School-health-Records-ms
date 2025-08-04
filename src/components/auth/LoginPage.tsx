@@ -98,10 +98,10 @@ const LoginPage = () => {
         try {
           await supabase.auth.signOut({ scope: 'global' });
         } catch (err) {
-          // Continue even if this fails
+          console.log('No existing session to sign out from');
         }
         
-        console.log('Attempting signup with:', { email, fullName, role });
+        console.log('Starting signup process with:', { email, fullName, role });
         
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
@@ -115,15 +115,20 @@ const LoginPage = () => {
           }
         });
 
+        console.log('Signup response:', { data, error });
+
         if (error) {
           console.error('Signup error:', error);
-          if (error.message.includes('already registered') || error.message.includes('already exists')) {
+          if (error.message.includes('User already registered')) {
             toast.error('This email is already registered. Please sign in instead.');
             setIsSignUp(false);
           } else if (error.message.includes('Invalid email')) {
             toast.error('Please enter a valid email address.');
           } else if (error.message.includes('Password should be at least')) {
             toast.error('Password should be at least 6 characters long.');
+          } else if (error.message.includes('database')) {
+            toast.error('Database error. Please contact support if this persists.');
+            console.error('Database error details:', error);
           } else {
             toast.error(`Registration failed: ${error.message}`);
           }
@@ -143,8 +148,10 @@ const LoginPage = () => {
           setIsSignUp(false);
         }
       } else {
-        // Sign in
+        // Sign in logic
         cleanupAuthState();
+        
+        console.log('Attempting sign in for:', email);
         
         const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
@@ -163,7 +170,8 @@ const LoginPage = () => {
         } else if (data.user && data.session) {
           console.log('User signed in successfully:', data.user.id);
           toast.success('Welcome! Redirecting to dashboard...');
-          window.location.href = '/';
+          // Use navigate instead of window.location.href for proper routing
+          navigate('/');
         }
       }
     } catch (error: any) {
