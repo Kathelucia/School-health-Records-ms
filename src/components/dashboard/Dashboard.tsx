@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import MedicalHeader from './MedicalHeader';
@@ -11,6 +10,7 @@ import ImmunizationManagement from '@/components/immunizations/ImmunizationManag
 import InsuranceManagement from '@/components/insurance/InsuranceManagement';
 import Reports from '@/components/reports/Reports';
 import ReportDownloader from '@/components/reports/ReportDownloader';
+import HealthAnalyticsDashboard from '@/components/reports/HealthAnalyticsDashboard';
 import NotificationCenter from '@/components/notifications/NotificationCenter';
 import Settings from '@/components/settings/Settings';
 import StaffManagement from '@/components/settings/StaffManagement';
@@ -194,15 +194,20 @@ const Dashboard = ({ userRole }: DashboardProps) => {
           <div className="p-6">
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-              <p className="text-gray-600">Generate health reports and analytics</p>
+              <p className="text-gray-600">Comprehensive health analytics and reporting</p>
             </div>
             <Tabs defaultValue="analytics" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="analytics">Analytics & Reports</TabsTrigger>
-                <TabsTrigger value="downloads">Download Reports</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="analytics">Health Analytics</TabsTrigger>
+                <TabsTrigger value="reports">Standard Reports</TabsTrigger>
+                <TabsTrigger value="downloads">Export Reports</TabsTrigger>
               </TabsList>
               
               <TabsContent value="analytics">
+                <HealthAnalyticsDashboard userRole={userRole} />
+              </TabsContent>
+              
+              <TabsContent value="reports">
                 <Reports userRole={userRole} />
               </TabsContent>
               
