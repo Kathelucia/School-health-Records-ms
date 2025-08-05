@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Users, 
   Activity, 
@@ -14,7 +16,8 @@ import {
   Shield,
   FileText,
   Bell,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 
 interface DashboardHomeProps {
@@ -34,94 +37,169 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
     upcomingTasks: []
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
   const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
+      console.log('Starting dashboard data fetch...');
       const today = new Date().toISOString().split('T')[0];
       
-      // Fetch students
-      const { data: students } = await supabase
-        .from('students')
-        .select('*')
-        .eq('is_active', true);
+      // Initialize data object
+      const data = {
+        totalStudents: 0,
+        todayVisits: 0,
+        chronicConditions: 0,
+        lowStockMedications: 0,
+        pendingFollowUps: 0,
+        recentVisits: [],
+        urgentAlerts: [],
+        upcomingTasks: []
+      };
 
-      // Fetch today's visits
-      const { data: todayVisits } = await supabase
-        .from('clinic_visits')
-        .select(`
-          *,
-          students(full_name, student_id, form_level)
-        `)
-        .gte('visit_date', today)
-        .order('visit_date', { ascending: false })
-        .limit(5);
+      // Fetch students with error handling
+      try {
+        console.log('Fetching students...');
+        const { data: students, error: studentsError } = await supabase
+          .from('students')
+          .select('*')
+          .eq('is_active', true);
 
-      // Fetch recent visits (last 5)
-      const { data: recentVisits } = await supabase
-        .from('clinic_visits')
-        .select(`
-          *,
-          students(full_name, student_id, form_level)
-        `)
-        .order('visit_date', { ascending: false })
-        .limit(5);
+        if (studentsError) {
+          console.error('Error fetching students:', studentsError);
+        } else {
+          data.totalStudents = students?.length || 0;
+          data.chronicConditions = students?.filter(s => 
+            s.chronic_conditions && s.chronic_conditions.trim()
+          ).length || 0;
+          console.log(`Found ${data.totalStudents} students`);
+        }
+      } catch (err) {
+        console.error('Students fetch failed:', err);
+      }
 
-      // Fetch low stock medications
-      const { data: medications } = await supabase
-        .from('medications')
-        .select('*')
-        .lte('quantity_in_stock', 'minimum_stock_level');
+      // Fetch today's visits with error handling
+      try {
+        console.log('Fetching today\'s visits...');
+        const { data: todayVisits, error: visitsError } = await supabase
+          .from('clinic_visits')
+          .select(`
+            *,
+            students(full_name, student_id, form_level)
+          `)
+          .gte('visit_date', today)
+          .order('visit_date', { ascending: false })
+          .limit(5);
 
-      // Fetch pending follow-ups
-      const { data: followUps } = await supabase
-        .from('clinic_visits')
-        .select(`
-          *,
-          students(full_name, student_id)
-        `)
-        .eq('follow_up_required', true)
-        .gte('follow_up_date', today);
+        if (visitsError) {
+          console.error('Error fetching today\'s visits:', visitsError);
+        } else {
+          data.todayVisits = todayVisits?.length || 0;
+          console.log(`Found ${data.todayVisits} visits today`);
+        }
+      } catch (err) {
+        console.error('Today visits fetch failed:', err);
+      }
 
-      const totalStudents = students?.length || 0;
-      const chronicConditions = students?.filter(s => s.chronic_conditions && s.chronic_conditions.trim()).length || 0;
+      // Fetch recent visits with error handling
+      try {
+        console.log('Fetching recent visits...');
+        const { data: recentVisits, error: recentError } = await supabase
+          .from('clinic_visits')
+          .select(`
+            *,
+            students(full_name, student_id, form_level)
+          `)
+          .order('visit_date', { ascending: false })
+          .limit(5);
 
-      // Create urgent alerts
+        if (recentError) {
+          console.error('Error fetching recent visits:', recentError);
+        } else {
+          data.recentVisits = recentVisits || [];
+          console.log(`Found ${data.recentVisits.length} recent visits`);
+        }
+      } catch (err) {
+        console.error('Recent visits fetch failed:', err);
+      }
+
+      // Fetch medications with error handling
+      try {
+        console.log('Fetching medications...');
+        const { data: medications, error: medicationsError } = await supabase
+          .from('medications')
+          .select('*')
+          .or('quantity_in_stock.lte.minimum_stock_level,expiry_date.lte.' + new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]);
+
+        if (medicationsError) {
+          console.error('Error fetching medications:', medicationsError);
+        } else {
+          data.lowStockMedications = medications?.length || 0;
+          console.log(`Found ${data.lowStockMedications} medications needing attention`);
+        }
+      } catch (err) {
+        console.error('Medications fetch failed:', err);
+      }
+
+      // Fetch follow-ups with error handling
+      try {
+        console.log('Fetching follow-ups...');
+        const { data: followUps, error: followUpsError } = await supabase
+          .from('clinic_visits')
+          .select(`
+            *,
+            students(full_name, student_id)
+          `)
+          .eq('follow_up_required', true)
+          .gte('follow_up_date', today);
+
+        if (followUpsError) {
+          console.error('Error fetching follow-ups:', followUpsError);
+        } else {
+          data.pendingFollowUps = followUps?.length || 0;
+          data.upcomingTasks = followUps?.slice(0, 3) || [];
+          console.log(`Found ${data.pendingFollowUps} pending follow-ups`);
+        }
+      } catch (err) {
+        console.error('Follow-ups fetch failed:', err);
+      }
+
+      // Create alerts based on data
       const urgentAlerts = [];
       
-      if (medications && medications.length > 0) {
+      if (data.lowStockMedications > 0) {
         urgentAlerts.push({
           type: 'medication',
-          message: `${medications.length} medications are running low`,
+          message: `${data.lowStockMedications} medications need attention`,
           priority: 'high',
           action: () => onNavigate('medications')
         });
       }
 
-      if (followUps && followUps.length > 0) {
+      if (data.pendingFollowUps > 0) {
         urgentAlerts.push({
           type: 'followup',
-          message: `${followUps.length} students require follow-up`,
+          message: `${data.pendingFollowUps} students require follow-up`,
           priority: 'medium',
           action: () => onNavigate('clinic')
         });
       }
 
-      setDashboardData({
-        totalStudents,
-        todayVisits: todayVisits?.length || 0,
-        chronicConditions,
-        lowStockMedications: medications?.length || 0,
-        pendingFollowUps: followUps?.length || 0,
-        recentVisits: recentVisits || [],
-        urgentAlerts,
-        upcomingTasks: followUps?.slice(0, 3) || []
-      });
-    } catch (error) {
+      data.urgentAlerts = urgentAlerts;
+
+      console.log('Dashboard data loaded successfully:', data);
+      setDashboardData(data);
+      
+    } catch (error: any) {
       console.error('Error fetching dashboard data:', error);
+      setError('Failed to load dashboard data. Please try refreshing.');
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -130,13 +208,92 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={fetchDashboardData}
+              className="ml-4"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+        
+        {/* Show basic interface even with error */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Button 
+                variant="outline" 
+                className="h-24 flex-col gap-2"
+                onClick={() => onNavigate('students')}
+              >
+                <Users className="w-8 h-8" />
+                <span className="text-sm">Students</span>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="h-24 flex-col gap-2"
+                onClick={() => onNavigate('clinic')}
+              >
+                <Stethoscope className="w-8 h-8" />
+                <span className="text-sm">Clinic</span>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="h-24 flex-col gap-2"
+                onClick={() => onNavigate('medications')}
+              >
+                <Activity className="w-8 h-8" />
+                <span className="text-sm">Medications</span>
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="h-24 flex-col gap-2"
+                onClick={() => onNavigate('reports')}
+              >
+                <FileText className="w-8 h-8" />
+                <span className="text-sm">Reports</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-blue-500 to-green-500 text-white p-6 rounded-lg">
+        <h1 className="text-2xl font-bold mb-2">School Health Records Management System</h1>
+        <p className="text-blue-100">
+          Welcome to your health management dashboard. Track student health, manage clinic visits, and monitor medication inventory.
+        </p>
+      </div>
+
       {/* Urgent Alerts */}
       {dashboardData.urgentAlerts.length > 0 && (
         <Card className="border-orange-200 bg-orange-50">
@@ -209,7 +366,7 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Low Stock Items</p>
+                <p className="text-sm text-gray-600">Medications Alert</p>
                 <p className="text-3xl font-bold text-red-600">{dashboardData.lowStockMedications}</p>
               </div>
               <AlertTriangle className="w-12 h-12 text-red-600" />
@@ -252,17 +409,17 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex-1">
                       <p className="font-semibold text-gray-900">
-                        {visit.students?.full_name}
+                        {visit.students?.full_name || 'Unknown Student'}
                       </p>
                       <p className="text-sm text-gray-600">
-                        {visit.students?.student_id} | {visit.students?.form_level?.replace('_', ' ').toUpperCase()}
+                        {visit.students?.student_id || 'N/A'} | {visit.students?.form_level?.replace('_', ' ').toUpperCase() || 'N/A'}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {visit.visit_type?.replace('_', ' ')} - {new Date(visit.visit_date).toLocaleDateString()}
+                        {visit.visit_type?.replace('_', ' ') || 'General'} - {new Date(visit.visit_date).toLocaleDateString()}
                       </p>
                     </div>
                     <Badge variant="outline" className="capitalize">
-                      {visit.visit_type?.replace('_', ' ')}
+                      {visit.visit_type?.replace('_', ' ') || 'Visit'}
                     </Badge>
                   </div>
                 ))}
@@ -270,7 +427,15 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <Stethoscope className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>No clinic visits recorded today</p>
+                <p>No recent clinic visits</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => onNavigate('clinic')}
+                >
+                  Record a Visit
+                </Button>
               </div>
             )}
           </CardContent>
@@ -291,10 +456,10 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
                   <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                     <div>
                       <p className="font-semibold text-blue-900">
-                        Follow-up: {task.students?.full_name}
+                        Follow-up: {task.students?.full_name || 'Unknown Student'}
                       </p>
                       <p className="text-sm text-blue-700">
-                        Due: {new Date(task.follow_up_date).toLocaleDateString()}
+                        Due: {task.follow_up_date ? new Date(task.follow_up_date).toLocaleDateString() : 'No date set'}
                       </p>
                     </div>
                     <Badge className="bg-blue-600 text-white">
