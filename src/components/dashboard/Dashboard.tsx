@@ -21,7 +21,8 @@ import AuditLogs from '@/components/audit/AuditLogs';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Shield } from 'lucide-react';
+import { AlertCircle, Shield, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface DashboardProps {
   userRole: string;
@@ -43,7 +44,7 @@ const Dashboard = ({ userRole }: DashboardProps) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        console.log('Fetching profile for user:', user.id);
+        console.log('Fetching profile for user in Dashboard:', user.id);
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -51,16 +52,19 @@ const Dashboard = ({ userRole }: DashboardProps) => {
           .single();
         
         if (profileError) {
-          console.error('Error fetching profile:', profileError);
-          setError('Failed to load user profile. Please try refreshing the page.');
+          console.error('Error fetching profile in Dashboard:', profileError);
+          // Don't set error for missing profile, just use defaults
+          if (profileError.code !== 'PGRST116') {
+            setError('Unable to load profile information.');
+          }
         } else {
-          console.log('Profile loaded:', profile);
+          console.log('Dashboard profile loaded:', profile);
           setUserProfile(profile);
         }
       }
     } catch (error) {
-      console.error('Error fetching user profile:', error);
-      setError('Failed to load user profile. Please try refreshing the page.');
+      console.error('Error fetching user profile in Dashboard:', error);
+      setError('Failed to load profile information.');
     } finally {
       setLoading(false);
     }
@@ -78,17 +82,6 @@ const Dashboard = ({ userRole }: DashboardProps) => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading dashboard...</p>
           </div>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="p-6">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
         </div>
       );
     }
@@ -119,6 +112,25 @@ const Dashboard = ({ userRole }: DashboardProps) => {
                 </div>
               )}
             </div>
+            
+            {error && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="flex items-center justify-between">
+                  <span>{error}</span>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={fetchUserProfile}
+                    className="ml-4"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Retry
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <DashboardHome userRole={userRole} onNavigate={handleNavigate} />
           </div>
         );
