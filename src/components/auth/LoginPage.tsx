@@ -109,19 +109,28 @@ const LoginPage = () => {
           if (error.message.includes('User already registered')) {
             setErrors(['This email is already registered. Please sign in instead.']);
             setIsSignUp(false);
+          } else if (error.message.includes('Unable to validate email address')) {
+            setErrors(['Invalid email address format.']);
+          } else if (error.message.includes('Password should be at least 6 characters')) {
+            setErrors(['Password must be at least 6 characters long.']);
           } else {
-            setErrors([`Registration failed: ${error.message}`]);
+            setErrors([error.message]);
           }
         } else if (data.user) {
           console.log('User created successfully:', data.user.id);
-          toast.success('Account created successfully! You can now sign in.');
-          // Reset form and switch to login
-          setEmail('');
-          setPassword('');
-          setConfirmPassword('');
-          setFullName('');
-          setRole('nurse');
-          setIsSignUp(false);
+          if (data.user.email_confirmed_at) {
+            // Email is already confirmed, user can sign in immediately
+            toast.success('Account created successfully! You are now signed in.');
+            navigate('/');
+          } else {
+            // Email confirmation required
+            toast.success('Account created! Please check your email to verify your account before signing in.');
+            setIsSignUp(false);
+            setEmail('');
+            setPassword('');
+            setConfirmPassword('');
+            setFullName('');
+          }
         }
       } else {
         console.log('Attempting sign in for:', email);
@@ -136,9 +145,11 @@ const LoginPage = () => {
           if (error.message.includes('Invalid login credentials')) {
             setErrors(['Invalid email or password. Please check your credentials.']);
           } else if (error.message.includes('Email not confirmed')) {
-            setErrors(['Please verify your email address before signing in.']);
+            setErrors(['Please verify your email address before signing in. Check your email for a confirmation link.']);
+          } else if (error.message.includes('Too many requests')) {
+            setErrors(['Too many login attempts. Please wait a few minutes before trying again.']);
           } else {
-            setErrors([`Sign in failed: ${error.message}`]);
+            setErrors([error.message]);
           }
         } else if (data.user && data.session) {
           console.log('User signed in successfully:', data.user.id);
@@ -239,11 +250,12 @@ const LoginPage = () => {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder="Enter your password (min. 6 characters)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pr-10 h-12 bg-white border-gray-300 focus:border-blue-500"
                   required
+                  minLength={6}
                 />
                 <button
                   type="button"
@@ -318,7 +330,7 @@ const LoginPage = () => {
               {loading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  Processing...
+                  {isSignUp ? 'Creating Account...' : 'Signing In...'}
                 </>
               ) : isSignUp ? (
                 <>
@@ -347,6 +359,7 @@ const LoginPage = () => {
                 setRole('nurse');
               }}
               className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
+              disabled={loading}
             >
               {isSignUp 
                 ? 'Already have an account? Sign in' 
@@ -354,6 +367,13 @@ const LoginPage = () => {
               }
             </button>
           </div>
+
+          {isSignUp && (
+            <div className="text-xs text-gray-500 text-center bg-blue-50 p-3 rounded-lg">
+              <p className="font-medium mb-1">Note:</p>
+              <p>After creating your account, you may need to verify your email address before you can sign in.</p>
+            </div>
+          )}
 
           <div className="text-xs text-gray-500 text-center border-t pt-4">
             <div className="flex items-center justify-center space-x-2">
