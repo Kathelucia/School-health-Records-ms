@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,7 +50,6 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
       console.log('Starting dashboard data fetch...');
       const today = new Date().toISOString().split('T')[0];
       
-      // Initialize data object
       const data = {
         totalStudents: 0,
         todayVisits: 0,
@@ -63,7 +61,7 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
         upcomingTasks: []
       };
 
-      // Fetch students with error handling
+      // Fetch students with better error handling
       try {
         console.log('Fetching students...');
         const { data: students, error: studentsError } = await supabase
@@ -73,18 +71,19 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
 
         if (studentsError) {
           console.error('Error fetching students:', studentsError);
-        } else {
-          data.totalStudents = students?.length || 0;
-          data.chronicConditions = students?.filter(s => 
+          // Don't throw, just log and continue
+        } else if (students) {
+          data.totalStudents = students.length;
+          data.chronicConditions = students.filter(s => 
             s.chronic_conditions && s.chronic_conditions.trim()
-          ).length || 0;
+          ).length;
           console.log(`Found ${data.totalStudents} students`);
         }
       } catch (err) {
         console.error('Students fetch failed:', err);
       }
 
-      // Fetch today's visits with error handling
+      // Fetch today's visits
       try {
         console.log('Fetching today\'s visits...');
         const { data: todayVisits, error: visitsError } = await supabase
@@ -99,15 +98,15 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
 
         if (visitsError) {
           console.error('Error fetching today\'s visits:', visitsError);
-        } else {
-          data.todayVisits = todayVisits?.length || 0;
+        } else if (todayVisits) {
+          data.todayVisits = todayVisits.length;
           console.log(`Found ${data.todayVisits} visits today`);
         }
       } catch (err) {
         console.error('Today visits fetch failed:', err);
       }
 
-      // Fetch recent visits with error handling
+      // Fetch recent visits
       try {
         console.log('Fetching recent visits...');
         const { data: recentVisits, error: recentError } = await supabase
@@ -121,33 +120,35 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
 
         if (recentError) {
           console.error('Error fetching recent visits:', recentError);
-        } else {
-          data.recentVisits = recentVisits || [];
+        } else if (recentVisits) {
+          data.recentVisits = recentVisits;
           console.log(`Found ${data.recentVisits.length} recent visits`);
         }
       } catch (err) {
         console.error('Recent visits fetch failed:', err);
       }
 
-      // Fetch medications with error handling
+      // Fetch medications
       try {
         console.log('Fetching medications...');
+        const thirtyDaysFromNow = new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0];
+        
         const { data: medications, error: medicationsError } = await supabase
           .from('medications')
           .select('*')
-          .or('quantity_in_stock.lte.minimum_stock_level,expiry_date.lte.' + new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]);
+          .or(`quantity_in_stock.lte.minimum_stock_level,expiry_date.lte.${thirtyDaysFromNow}`);
 
         if (medicationsError) {
           console.error('Error fetching medications:', medicationsError);
-        } else {
-          data.lowStockMedications = medications?.length || 0;
+        } else if (medications) {
+          data.lowStockMedications = medications.length;
           console.log(`Found ${data.lowStockMedications} medications needing attention`);
         }
       } catch (err) {
         console.error('Medications fetch failed:', err);
       }
 
-      // Fetch follow-ups with error handling
+      // Fetch follow-ups
       try {
         console.log('Fetching follow-ups...');
         const { data: followUps, error: followUpsError } = await supabase
@@ -161,9 +162,9 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
 
         if (followUpsError) {
           console.error('Error fetching follow-ups:', followUpsError);
-        } else {
-          data.pendingFollowUps = followUps?.length || 0;
-          data.upcomingTasks = followUps?.slice(0, 3) || [];
+        } else if (followUps) {
+          data.pendingFollowUps = followUps.length;
+          data.upcomingTasks = followUps.slice(0, 3);
           console.log(`Found ${data.pendingFollowUps} pending follow-ups`);
         }
       } catch (err) {
@@ -235,7 +236,6 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
           </AlertDescription>
         </Alert>
         
-        {/* Show basic interface even with error */}
         <Card>
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>

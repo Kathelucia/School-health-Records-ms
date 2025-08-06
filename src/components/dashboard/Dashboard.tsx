@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import MedicalHeader from './MedicalHeader';
@@ -41,15 +42,18 @@ const Dashboard = ({ userRole }: DashboardProps) => {
   const fetchUserProfile = async () => {
     setLoading(true);
     setError(null);
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      
       if (user) {
         console.log('Fetching profile for user in Dashboard:', user.id);
+        
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
         
         if (profileError) {
           console.error('Error fetching profile in Dashboard:', profileError);
@@ -57,10 +61,11 @@ const Dashboard = ({ userRole }: DashboardProps) => {
           if (profileError.code !== 'PGRST116') {
             setError('Unable to load profile information.');
           }
-        } else {
+        } else if (profile) {
           console.log('Dashboard profile loaded:', profile);
           setUserProfile(profile);
         }
+        // If no profile, we'll continue with null profile (handled in UI)
       }
     } catch (error) {
       console.error('Error fetching user profile in Dashboard:', error);

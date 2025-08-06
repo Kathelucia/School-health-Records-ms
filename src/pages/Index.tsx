@@ -6,45 +6,63 @@ import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { User, Session } from '@supabase/supabase-js';
 
 const Index = () => {
   const [userRole, setUserRole] = useState('nurse');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    fetchUserRole();
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Defer profile fetch to avoid blocking auth state change
+          setTimeout(() => {
+            fetchUserProfile(session.user);
+          }, 0);
+        } else {
+          setLoading(false);
+        }
+      }
+    );
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.id);
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        fetchUserProfile(session.user);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserRole = async () => {
+  const fetchUserProfile = async (user: User) => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log('Fetching user session...');
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      console.log('Fetching user profile for:', user.id);
       
-      if (userError) {
-        console.error('Error getting user:', userError);
-        setError('Authentication failed. Please try logging in again.');
-        return;
-      }
-      
-      if (!user) {
-        console.log('No authenticated user found');
-        setError('No authenticated user found. Please log in.');
-        return;
-      }
-
-      console.log('User authenticated:', user.id);
-      console.log('Fetching user profile...');
-      
-      // Try to fetch profile using the correct table structure
+      // Try to fetch profile from profiles table
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('user_role, role, full_name, email')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
       
       if (profileError) {
         console.error('Error fetching profile:', profileError);
@@ -71,7 +89,7 @@ const Index = () => {
           }
         } else {
           console.error('Profile fetch error:', profileError);
-          setError('Unable to load your profile. Please contact your administrator if this persists.');
+          setError('Unable to load your profile. Please try refreshing.');
         }
       } else if (profile) {
         console.log('Profile loaded:', profile);
@@ -79,9 +97,29 @@ const Index = () => {
         const role = profile.user_role || profile.role || 'nurse';
         setUserRole(role);
         console.log('User role set to:', role);
+      } else {
+        // No profile exists, create default one
+        console.log('No profile found, creating default profile');
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            full_name: user.user_metadata?.full_name || user.email || 'Unknown User',
+            email: user.email || '',
+            user_role: 'nurse'
+          });
+        
+        if (insertError) {
+          console.error('Error creating default profile:', insertError);
+          setError('Failed to create user profile. Please contact your administrator.');
+        } else {
+          console.log('Default profile created successfully');
+          setUserRole('nurse');
+          toast.success('Welcome! Your profile has been set up.');
+        }
       }
     } catch (error: any) {
-      console.error('Unexpected error in fetchUserRole:', error);
+      console.error('Unexpected error in fetchUserProfile:', error);
       setError('An unexpected error occurred. Please try refreshing the page.');
     } finally {
       setLoading(false);
@@ -89,7 +127,9 @@ const Index = () => {
   };
 
   const handleRetry = () => {
-    fetchUserRole();
+    if (user) {
+      fetchUserProfile(user);
+    }
   };
 
   if (loading) {
