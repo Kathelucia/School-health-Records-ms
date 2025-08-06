@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import MedicalHeader from './MedicalHeader';
@@ -32,22 +31,25 @@ interface DashboardProps {
 const Dashboard = ({ userRole }: DashboardProps) => {
   const [activeView, setActiveView] = useState('dashboard');
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchUserProfile();
-  }, []);
+    // Only fetch profile if we have a valid user role
+    if (userRole) {
+      fetchUserProfile();
+    }
+  }, [userRole]);
 
   const fetchUserProfile = async () => {
-    setLoading(true);
+    // Don't show loading for profile fetch since main auth is already done
     setError(null);
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        console.log('Fetching profile for user in Dashboard:', user.id);
+        console.log('Fetching detailed profile for user in Dashboard:', user.id);
         
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -56,22 +58,22 @@ const Dashboard = ({ userRole }: DashboardProps) => {
           .maybeSingle();
         
         if (profileError) {
-          console.error('Error fetching profile in Dashboard:', profileError);
-          // Don't set error for missing profile, just use defaults
+          console.error('Error fetching detailed profile in Dashboard:', profileError);
+          // Don't set error for missing profile, just continue without detailed profile
           if (profileError.code !== 'PGRST116') {
-            setError('Unable to load profile information.');
+            console.warn('Profile fetch warning:', profileError.message);
           }
         } else if (profile) {
-          console.log('Dashboard profile loaded:', profile);
+          console.log('Detailed dashboard profile loaded:', profile);
           setUserProfile(profile);
         }
-        // If no profile, we'll continue with null profile (handled in UI)
+        // If no profile, we'll continue with basic userRole from parent
+      } else {
+        console.warn('No user found when fetching dashboard profile');
       }
     } catch (error) {
       console.error('Error fetching user profile in Dashboard:', error);
-      setError('Failed to load profile information.');
-    } finally {
-      setLoading(false);
+      // Don't show error to user for profile fetch issues
     }
   };
 
@@ -80,18 +82,7 @@ const Dashboard = ({ userRole }: DashboardProps) => {
   };
 
   const renderContent = () => {
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading dashboard...</p>
-          </div>
-        </div>
-      );
-    }
-
-    const isAdmin = userRole === 'admin' || userProfile?.user_role === 'admin';
+    const isAdmin = userRole === 'admin' || userProfile?.user_role === 'admin' || userProfile?.role === 'admin';
 
     switch (activeView) {
       case 'dashboard':

@@ -24,12 +24,13 @@ const Index = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Defer profile fetch to avoid blocking auth state change
+          // Use setTimeout to defer profile fetch and prevent auth state blocking
           setTimeout(() => {
             fetchUserProfile(session.user);
-          }, 0);
+          }, 100);
         } else {
           setLoading(false);
+          setError(null);
         }
       }
     );
@@ -51,11 +52,22 @@ const Index = () => {
   }, []);
 
   const fetchUserProfile = async (user: User) => {
+    if (!user?.id) {
+      console.error('No user ID provided');
+      setError('Invalid user session');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     
     try {
       console.log('Fetching user profile for:', user.id);
+      
+      // First check if user has admin role in metadata
+      const userMetadataRole = user.user_metadata?.role;
+      console.log('User metadata role:', userMetadataRole);
       
       // Try to fetch profile from profiles table
       const { data: profile, error: profileError } = await supabase
@@ -67,24 +79,28 @@ const Index = () => {
       if (profileError) {
         console.error('Error fetching profile:', profileError);
         
-        // If profile doesn't exist, create one
+        // If profile doesn't exist, create one with role from user metadata
         if (profileError.code === 'PGRST116') {
-          console.log('Creating new profile for user');
+          console.log('Creating new profile for user with role:', userMetadataRole || 'nurse');
+          
+          const defaultRole = userMetadataRole === 'admin' ? 'admin' : 'nurse';
+          
           const { error: insertError } = await supabase
             .from('profiles')
             .insert({
               id: user.id,
               full_name: user.user_metadata?.full_name || user.email || 'Unknown User',
               email: user.email || '',
-              user_role: 'nurse'
+              user_role: defaultRole,
+              role: defaultRole
             });
           
           if (insertError) {
             console.error('Error creating profile:', insertError);
             setError('Failed to create user profile. Please contact your administrator.');
           } else {
-            console.log('Profile created successfully');
-            setUserRole('nurse');
+            console.log('Profile created successfully with role:', defaultRole);
+            setUserRole(defaultRole);
             toast.success('Welcome! Your profile has been set up.');
           }
         } else {
@@ -93,28 +109,31 @@ const Index = () => {
         }
       } else if (profile) {
         console.log('Profile loaded:', profile);
-        // Use user_role first, then fallback to role, then default to nurse
-        const role = profile.user_role || profile.role || 'nurse';
+        // Use user_role first, then fallback to role, then user metadata, then default to nurse
+        const role = profile.user_role || profile.role || userMetadataRole || 'nurse';
         setUserRole(role);
         console.log('User role set to:', role);
       } else {
-        // No profile exists, create default one
+        // No profile exists, create default one using metadata role
         console.log('No profile found, creating default profile');
+        const defaultRole = userMetadataRole === 'admin' ? 'admin' : 'nurse';
+        
         const { error: insertError } = await supabase
           .from('profiles')
           .insert({
             id: user.id,
             full_name: user.user_metadata?.full_name || user.email || 'Unknown User',
             email: user.email || '',
-            user_role: 'nurse'
+            user_role: defaultRole,
+            role: defaultRole
           });
         
         if (insertError) {
           console.error('Error creating default profile:', insertError);
           setError('Failed to create user profile. Please contact your administrator.');
         } else {
-          console.log('Default profile created successfully');
-          setUserRole('nurse');
+          console.log('Default profile created successfully with role:', defaultRole);
+          setUserRole(defaultRole);
           toast.success('Welcome! Your profile has been set up.');
         }
       }
@@ -129,6 +148,15 @@ const Index = () => {
   const handleRetry = () => {
     if (user) {
       fetchUserProfile(user);
+    } else {
+      // Try to get session again
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          fetchUserProfile(session.user);
+        } else {
+          setError('No active session found. Please log in again.');
+        }
+      });
     }
   };
 
@@ -155,7 +183,7 @@ const Index = () => {
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="w-8 h-8 text-red-600" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Connection Error</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">System Error</h1>
             </div>
             
             <Alert variant="destructive" className="mb-6">
