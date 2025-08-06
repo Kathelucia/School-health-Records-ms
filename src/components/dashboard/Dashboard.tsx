@@ -35,21 +35,19 @@ const Dashboard = ({ userRole }: DashboardProps) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Only fetch profile if we have a valid user role
     if (userRole) {
       fetchUserProfile();
     }
   }, [userRole]);
 
   const fetchUserProfile = async () => {
-    // Don't show loading for profile fetch since main auth is already done
     setError(null);
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        console.log('Fetching detailed profile for user in Dashboard:', user.id);
+        console.log('Fetching detailed profile for dashboard:', user.id);
         
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
@@ -58,22 +56,20 @@ const Dashboard = ({ userRole }: DashboardProps) => {
           .maybeSingle();
         
         if (profileError) {
-          console.error('Error fetching detailed profile in Dashboard:', profileError);
-          // Don't set error for missing profile, just continue without detailed profile
+          console.error('Dashboard profile fetch error:', profileError);
+          // Don't show error for missing profile in dashboard
           if (profileError.code !== 'PGRST116') {
             console.warn('Profile fetch warning:', profileError.message);
           }
         } else if (profile) {
-          console.log('Detailed dashboard profile loaded:', profile);
+          console.log('Dashboard profile loaded:', profile);
           setUserProfile(profile);
         }
-        // If no profile, we'll continue with basic userRole from parent
-      } else {
-        console.warn('No user found when fetching dashboard profile');
+        // Continue with basic userRole from parent if no detailed profile
       }
     } catch (error) {
-      console.error('Error fetching user profile in Dashboard:', error);
-      // Don't show error to user for profile fetch issues
+      console.error('Dashboard profile fetch error:', error);
+      // Don't show error to user for profile fetch issues in dashboard
     }
   };
 
@@ -108,24 +104,6 @@ const Dashboard = ({ userRole }: DashboardProps) => {
                 </div>
               )}
             </div>
-            
-            {error && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="flex items-center justify-between">
-                  <span>{error}</span>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={fetchUserProfile}
-                    className="ml-4"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Retry
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            )}
             
             <DashboardHome userRole={userRole} onNavigate={handleNavigate} />
           </div>

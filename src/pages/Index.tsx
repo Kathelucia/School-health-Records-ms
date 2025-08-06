@@ -24,13 +24,11 @@ const Index = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Use setTimeout to defer profile fetch and prevent auth state blocking
-          setTimeout(() => {
-            fetchUserProfile(session.user);
-          }, 100);
+          fetchUserProfile(session.user);
         } else {
           setLoading(false);
           setError(null);
+          setUserRole('nurse'); // Reset to default when logged out
         }
       }
     );
@@ -64,10 +62,7 @@ const Index = () => {
     
     try {
       console.log('Fetching user profile for:', user.id);
-      
-      // First check if user has admin role in metadata
-      const userMetadataRole = user.user_metadata?.role;
-      console.log('User metadata role:', userMetadataRole);
+      console.log('User metadata role:', user.user_metadata?.role);
       
       // Try to fetch profile from profiles table
       const { data: profile, error: profileError } = await supabase
@@ -76,16 +71,18 @@ const Index = () => {
         .eq('id', user.id)
         .maybeSingle();
       
+      console.log('Profile query result:', { profile, profileError });
+      
       if (profileError) {
         console.error('Error fetching profile:', profileError);
         
-        // If profile doesn't exist, create one with role from user metadata
+        // If profile doesn't exist, create one
         if (profileError.code === 'PGRST116') {
-          console.log('Creating new profile for user with role:', userMetadataRole || 'nurse');
-          
+          console.log('No profile found, creating new profile');
+          const userMetadataRole = user.user_metadata?.role;
           const defaultRole = userMetadataRole === 'admin' ? 'admin' : 'nurse';
           
-          const { error: insertError } = await supabase
+          const { data: newProfile, error: insertError } = await supabase
             .from('profiles')
             .insert({
               id: user.id,
@@ -93,53 +90,45 @@ const Index = () => {
               email: user.email || '',
               user_role: defaultRole,
               role: defaultRole
-            });
+            })
+            .select('user_role, role')
+            .single();
           
           if (insertError) {
             console.error('Error creating profile:', insertError);
-            setError('Failed to create user profile. Please contact your administrator.');
+            // Fall back to user metadata role if profile creation fails
+            const fallbackRole = user.user_metadata?.role === 'admin' ? 'admin' : 'nurse';
+            setUserRole(fallbackRole);
+            console.log('Using fallback role from user metadata:', fallbackRole);
           } else {
-            console.log('Profile created successfully with role:', defaultRole);
-            setUserRole(defaultRole);
+            console.log('Profile created successfully:', newProfile);
+            const role = newProfile.user_role || newProfile.role || 'nurse';
+            setUserRole(role);
             toast.success('Welcome! Your profile has been set up.');
           }
         } else {
-          console.error('Profile fetch error:', profileError);
-          setError('Unable to load your profile. Please try refreshing.');
+          // For other errors, fall back to user metadata
+          const fallbackRole = user.user_metadata?.role === 'admin' ? 'admin' : 'nurse';
+          setUserRole(fallbackRole);
+          console.log('Using fallback role due to profile error:', fallbackRole);
         }
       } else if (profile) {
-        console.log('Profile loaded:', profile);
-        // Use user_role first, then fallback to role, then user metadata, then default to nurse
-        const role = profile.user_role || profile.role || userMetadataRole || 'nurse';
+        console.log('Profile loaded successfully:', profile);
+        const role = profile.user_role || profile.role || user.user_metadata?.role || 'nurse';
         setUserRole(role);
         console.log('User role set to:', role);
       } else {
-        // No profile exists, create default one using metadata role
-        console.log('No profile found, creating default profile');
-        const defaultRole = userMetadataRole === 'admin' ? 'admin' : 'nurse';
-        
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            full_name: user.user_metadata?.full_name || user.email || 'Unknown User',
-            email: user.email || '',
-            user_role: defaultRole,
-            role: defaultRole
-          });
-        
-        if (insertError) {
-          console.error('Error creating default profile:', insertError);
-          setError('Failed to create user profile. Please contact your administrator.');
-        } else {
-          console.log('Default profile created successfully with role:', defaultRole);
-          setUserRole(defaultRole);
-          toast.success('Welcome! Your profile has been set up.');
-        }
+        // No profile found, use metadata role
+        const fallbackRole = user.user_metadata?.role === 'admin' ? 'admin' : 'nurse';
+        setUserRole(fallbackRole);
+        console.log('No profile found, using metadata role:', fallbackRole);
       }
     } catch (error: any) {
       console.error('Unexpected error in fetchUserProfile:', error);
-      setError('An unexpected error occurred. Please try refreshing the page.');
+      // Fall back to user metadata role
+      const fallbackRole = user.user_metadata?.role === 'admin' ? 'admin' : 'nurse';
+      setUserRole(fallbackRole);
+      console.log('Using fallback role due to unexpected error:', fallbackRole);
     } finally {
       setLoading(false);
     }
@@ -149,7 +138,6 @@ const Index = () => {
     if (user) {
       fetchUserProfile(user);
     } else {
-      // Try to get session again
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
           fetchUserProfile(session.user);
