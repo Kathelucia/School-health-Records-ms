@@ -126,21 +126,21 @@ const StudentProfiles = ({ userRole }: StudentProfilesProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50/30 via-white to-green-50/30">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        {/* Header Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-muted/20 via-background to-secondary/5">
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
+        {/* Professional Header Section */}
+        <div className="card-professional p-8 animate-fade-in">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-green-600 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-white" />
+            <div className="space-y-3">
+              <div className="flex items-center space-x-4">
+                <div className="icon-container bg-gradient-to-br from-primary to-accent">
+                  <Users className="w-7 h-7 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900">
+                  <h1 className="text-4xl font-bold text-foreground mb-2">
                     Student Health Profiles
                   </h1>
-                  <p className="text-gray-600 text-lg">
+                  <p className="text-muted-foreground text-lg">
                     Comprehensive health records management system
                   </p>
                 </div>
@@ -152,7 +152,7 @@ const StudentProfiles = ({ userRole }: StudentProfilesProps) => {
                 <Button 
                   onClick={handleAddStudent}
                   size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                  className="btn-primary px-8 py-3 text-lg"
                 >
                   <Plus className="w-5 h-5 mr-2" />
                   Add New Student
@@ -162,116 +162,104 @@ const StudentProfiles = ({ userRole }: StudentProfilesProps) => {
           </div>
         </div>
 
-        {/* Stats Dashboard */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Total Students</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-                  <p className="text-xs text-gray-500">Registered in system</p>
-                </div>
-                <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center">
-                  <Users className="w-7 h-7 text-blue-600" />
-                </div>
+        {/* Professional Stats Dashboard */}
+        <div className="medical-grid animate-slide-up">
+          <div className="stats-card group">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Students</p>
+                <p className="text-4xl font-bold text-foreground">{stats.total}</p>
+                <p className="text-xs text-muted-foreground">Registered in system</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="icon-container bg-primary/10">
+                <Users className="w-8 h-8 text-primary" />
+              </div>
+            </div>
+          </div>
 
-          <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Active Records</p>
-                  <p className="text-3xl font-bold text-green-600">{stats.active}</p>
-                  <p className="text-xs text-gray-500">Currently enrolled</p>
-                </div>
-                <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center">
-                  <FileText className="w-7 h-7 text-green-600" />
-                </div>
+          <div className="stats-card group">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Active Records</p>
+                <p className="text-4xl font-bold text-secondary">{stats.active}</p>
+                <p className="text-xs text-muted-foreground">Currently enrolled</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="icon-container bg-secondary/10">
+                <FileText className="w-8 h-8 text-secondary" />
+              </div>
+            </div>
+          </div>
 
-          <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">With Allergies</p>
-                  <p className="text-3xl font-bold text-orange-600">{stats.withAllergies}</p>
-                  <p className="text-xs text-gray-500">Require monitoring</p>
-                </div>
-                <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center">
-                  <AlertCircle className="w-7 h-7 text-orange-600" />
-                </div>
+          <div className="stats-card group">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">With Allergies</p>
+                <p className="text-4xl font-bold text-orange-500">{stats.withAllergies}</p>
+                <p className="text-xs text-muted-foreground">Require monitoring</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="icon-container bg-orange-50">
+                <AlertCircle className="w-8 h-8 text-orange-500" />
+              </div>
+            </div>
+          </div>
 
-          <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Medical Conditions</p>
-                  <p className="text-3xl font-bold text-red-600">{stats.withConditions}</p>
-                  <p className="text-xs text-gray-500">Special attention needed</p>
-                </div>
-                <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center">
-                  <AlertCircle className="w-7 h-7 text-red-600" />
-                </div>
+          <div className="stats-card group">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Medical Conditions</p>
+                <p className="text-4xl font-bold text-red-500">{stats.withConditions}</p>
+                <p className="text-xs text-muted-foreground">Special attention needed</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="icon-container bg-red-50">
+                <AlertCircle className="w-8 h-8 text-red-500" />
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Search and Filters */}
-        <Card className="bg-white border-0 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <Input
-                  placeholder="Search students by name, ID, admission number, or form level..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 h-12 text-base border-2 border-gray-200 focus:border-blue-500 focus:ring-0 rounded-xl"
-                />
-              </div>
-              <Button variant="outline" size="lg" className="h-12 px-6 rounded-xl border-2">
-                <Filter className="w-4 h-4 mr-2" />
-                Filters
-              </Button>
+        {/* Professional Search Section */}
+        <div className="card-professional p-6 animate-scale-in">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+              <Input
+                placeholder="Search students by name, ID, admission number, or form level..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input-professional pl-12 h-14 text-base"
+              />
             </div>
-          </CardContent>
-        </Card>
+            <Button variant="outline" size="lg" className="h-14 px-8 rounded-xl border-2 hover:scale-105 transition-transform">
+              <Filter className="w-5 h-5 mr-2" />
+              Filters
+            </Button>
+          </div>
+        </div>
 
-        {/* Students Grid */}
+        {/* Professional Student Grid */}
         <div className="space-y-6">
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="medical-grid">
               {[1,2,3,4,5,6].map(i => (
-                <Card key={i} className="h-64 bg-gray-100 border-0">
-                  <CardContent className="p-6 animate-pulse">
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-gray-300 rounded-full"></div>
-                        <div className="space-y-2">
-                          <div className="h-4 bg-gray-300 rounded w-32"></div>
-                          <div className="h-3 bg-gray-300 rounded w-24"></div>
-                        </div>
-                      </div>
+                <div key={i} className="card-professional h-64 p-6 animate-pulse">
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-muted rounded-full"></div>
                       <div className="space-y-2">
-                        <div className="h-3 bg-gray-300 rounded"></div>
-                        <div className="h-3 bg-gray-300 rounded w-3/4"></div>
+                        <div className="h-4 bg-muted rounded w-32"></div>
+                        <div className="h-3 bg-muted rounded w-24"></div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                    <div className="space-y-2">
+                      <div className="h-3 bg-muted rounded"></div>
+                      <div className="h-3 bg-muted rounded w-3/4"></div>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           ) : filteredStudents.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="medical-grid">
               {filteredStudents.map((student: any, index) => (
                 <StudentCard
                   key={student.id}
@@ -282,50 +270,46 @@ const StudentProfiles = ({ userRole }: StudentProfilesProps) => {
               ))}
             </div>
           ) : searchTerm ? (
-            <Card className="bg-white border-0 shadow-sm">
-              <CardContent className="p-12 text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Search className="w-8 h-8 text-gray-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No students found</h3>
-                <p className="text-gray-600 mb-4">
-                  No students match your search criteria "{searchTerm}"
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => setSearchTerm('')}
-                  className="rounded-xl"
-                >
-                  Clear Search
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="card-professional p-12 text-center animate-fade-in">
+              <div className="icon-container bg-muted/50 mx-auto mb-6">
+                <Search className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-2xl font-semibold text-foreground mb-3">No students found</h3>
+              <p className="text-muted-foreground text-lg mb-6">
+                No students match your search criteria "{searchTerm}"
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => setSearchTerm('')}
+                className="rounded-xl px-6"
+              >
+                Clear Search
+              </Button>
+            </div>
           ) : (
             <StudentEmptyState searchTerm={searchTerm} />
           )}
         </div>
 
-        {/* Add Student CTA - Show when no students exist */}
+        {/* Professional Add Student CTA */}
         {!loading && students.length === 0 && canManageStudents && (
-          <Card className="bg-gradient-to-r from-blue-50 to-green-50 border-0 shadow-sm">
-            <CardContent className="p-12 text-center">
-              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <Plus className="w-10 h-10 text-blue-600" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3">Get Started</h3>
-              <p className="text-gray-600 text-lg mb-6 max-w-md mx-auto">
-                Begin building your student health database by adding your first student profile
-              </p>
-              <Button 
-                onClick={handleAddStudent}
-                size="lg"
-                className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-semibold px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Add First Student
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="card-professional p-12 text-center glass-effect animate-scale-in">
+            <div className="icon-container bg-gradient-to-br from-primary to-accent mx-auto mb-8 animate-float">
+              <Plus className="w-12 h-12 text-primary-foreground" />
+            </div>
+            <h3 className="text-3xl font-bold text-foreground mb-4">Get Started</h3>
+            <p className="text-muted-foreground text-xl mb-8 max-w-md mx-auto">
+              Begin building your student health database by adding your first student profile
+            </p>
+            <Button 
+              onClick={handleAddStudent}
+              size="lg"
+              className="btn-primary px-10 py-4 text-lg"
+            >
+              <Plus className="w-6 h-6 mr-3" />
+              Add Your First Student
+            </Button>
+          </div>
         )}
 
         {/* Student Form Modal */}
