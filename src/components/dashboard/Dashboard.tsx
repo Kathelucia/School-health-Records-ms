@@ -84,23 +84,25 @@ const Dashboard = ({ userRole }: DashboardProps) => {
       case 'dashboard':
         return (
           <div className="p-6">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <div className="mb-6 animate-fade-in">
+              <h1 className="text-3xl font-bold text-foreground mb-2">
                 Welcome to SHRMS Dashboard
               </h1>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 School Health Records Management System - 
                 {isAdmin ? ' Administrator Access' : ' School Nurse Access'}
               </p>
               {isAdmin && (
-                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-center space-x-2">
-                    <Shield className="w-5 h-5 text-red-600" />
-                    <span className="text-red-800 font-semibold">Administrator Privileges Active</span>
+                <div className="mt-4 card-professional border-destructive/20 bg-destructive/5">
+                  <div className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <Shield className="w-5 h-5 text-destructive" />
+                      <span className="text-destructive font-semibold">Administrator Privileges Active</span>
+                    </div>
+                    <p className="text-destructive/80 text-sm mt-1">
+                      You have full system access including staff management and system settings.
+                    </p>
                   </div>
-                  <p className="text-red-700 text-sm mt-1">
-                    You have full system access including staff management and system settings.
-                  </p>
                 </div>
               )}
             </div>
@@ -112,9 +114,9 @@ const Dashboard = ({ userRole }: DashboardProps) => {
       case 'students':
         return (
           <div className="p-6">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">Student Records</h1>
-              <p className="text-gray-600">Manage student profiles and health information</p>
+            <div className="mb-6 animate-fade-in">
+              <h1 className="text-2xl font-bold text-foreground">Student Records</h1>
+              <p className="text-muted-foreground">Manage student profiles and health information</p>
             </div>
             <StudentProfiles userRole={userRole} />
           </div>
@@ -291,7 +293,7 @@ const Dashboard = ({ userRole }: DashboardProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <MedicalHeader userRole={userRole} userProfile={userProfile} />
       <div className="flex">
         <MedicalSidebar 
@@ -299,7 +301,7 @@ const Dashboard = ({ userRole }: DashboardProps) => {
           activeView={activeView}
           onViewChange={setActiveView}
         />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto bg-muted/30">
           {renderContent()}
         </main>
       </div>

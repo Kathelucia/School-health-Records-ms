@@ -104,16 +104,16 @@ const MedicalSidebar = ({ activeView, onViewChange, userRole }: MedicalSidebarPr
   );
 
   return (
-    <aside className="w-72 bg-white border-r border-gray-200 flex flex-col shadow-sm">
+    <aside className="w-72 bg-card border-r border-border flex flex-col shadow-sm">
       {/* Header */}
-      <div className="p-6 border-b border-gray-100">
+      <div className="p-6 border-b border-border/50">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-green-600 rounded-lg flex items-center justify-center">
-            <Activity className="w-6 h-6 text-white" />
+          <div className="icon-container bg-gradient-to-r from-primary to-accent">
+            <Activity className="w-6 h-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">SHRMS</h1>
-            <p className="text-sm text-gray-500">Health Management</p>
+            <h1 className="text-xl font-bold text-card-foreground">SHRMS</h1>
+            <p className="text-sm text-muted-foreground">Health Management</p>
           </div>
         </div>
       </div>
@@ -121,7 +121,7 @@ const MedicalSidebar = ({ activeView, onViewChange, userRole }: MedicalSidebarPr
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
         <div className="mb-4">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
             Main Navigation
           </h2>
         </div>
@@ -137,26 +137,26 @@ const MedicalSidebar = ({ activeView, onViewChange, userRole }: MedicalSidebarPr
               className={cn(
                 "w-full justify-start text-left h-12 px-4 mb-1 transition-all duration-200",
                 isActive 
-                  ? "bg-gradient-to-r from-blue-600 to-green-600 text-white shadow-md hover:from-blue-700 hover:to-green-700" 
-                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md hover:from-primary/90 hover:to-accent/90" 
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )}
               onClick={() => onViewChange(item.id)}
             >
               <div className="flex items-center space-x-3 w-full">
                 <Icon className={cn(
                   "w-5 h-5 flex-shrink-0",
-                  isActive ? "text-white" : "text-gray-500"
+                  isActive ? "text-primary-foreground" : "text-muted-foreground"
                 )} />
                 <div className="flex-1 min-w-0">
                   <p className={cn(
                     "text-sm font-medium truncate",
-                    isActive ? "text-white" : "text-gray-900"
+                    isActive ? "text-primary-foreground" : "text-foreground"
                   )}>
                     {item.label}
                   </p>
                   <p className={cn(
                     "text-xs truncate",
-                    isActive ? "text-blue-100" : "text-gray-500"
+                    isActive ? "text-primary-foreground/80" : "text-muted-foreground"
                   )}>
                     {item.description}
                   </p>
@@ -168,35 +168,35 @@ const MedicalSidebar = ({ activeView, onViewChange, userRole }: MedicalSidebarPr
       </nav>
 
       {/* Role Badge */}
-      <div className="p-4 border-t border-gray-100">
+      <div className="p-4 border-t border-border">
         <div className={cn(
-          "rounded-lg p-4 border",
+          "card-professional p-4 border",
           isAdmin 
-            ? "bg-gradient-to-r from-red-50 to-orange-50 border-red-200" 
-            : "bg-gradient-to-r from-blue-50 to-green-50 border-blue-200"
+            ? "bg-destructive/5 border-destructive/20" 
+            : "bg-primary/5 border-primary/20"
         )}>
           <div className="flex items-center space-x-3">
             <div className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center",
-              isAdmin ? "bg-red-100" : "bg-blue-100"
+              isAdmin ? "bg-destructive/10" : "bg-primary/10"
             )}>
               <Shield className={cn(
                 "w-4 h-4",
-                isAdmin ? "text-red-600" : "text-blue-600"
+                isAdmin ? "text-destructive" : "text-primary"
               )} />
             </div>
             <div className="flex-1">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
                 Current Role
               </p>
               <p className={cn(
                 "text-sm font-semibold",
-                isAdmin ? "text-red-800" : "text-blue-800"
+                isAdmin ? "text-destructive" : "text-primary"
               )}>
                 {isAdmin ? 'System Administrator' : 'School Nurse'}
               </p>
               {isAdmin && (
-                <p className="text-xs text-red-600 mt-1">
+                <p className="text-xs text-destructive/80 mt-1">
                   Full system access
                 </p>
               )}

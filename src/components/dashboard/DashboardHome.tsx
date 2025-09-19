@@ -287,134 +287,132 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-500 to-green-500 text-white p-6 rounded-lg">
+      <div className="card-professional p-6 bg-gradient-to-r from-primary to-accent text-primary-foreground animate-fade-in">
         <h1 className="text-2xl font-bold mb-2">School Health Records Management System</h1>
-        <p className="text-blue-100">
+        <p className="text-primary-foreground/90">
           Welcome to your health management dashboard. Track student health, manage clinic visits, and monitor medication inventory.
         </p>
       </div>
 
       {/* Urgent Alerts */}
       {dashboardData.urgentAlerts.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-orange-800">
+        <div className="card-professional border-accent/20 bg-accent/5 animate-scale-in">
+          <div className="p-4">
+            <h3 className="flex items-center gap-2 text-accent font-semibold mb-4">
               <Bell className="w-5 h-5" />
               Urgent Alerts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
+            </h3>
+            <div className="space-y-3">
               {dashboardData.urgentAlerts.map((alert, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg">
+                <div key={index} className="flex items-center justify-between p-3 bg-card rounded-xl border border-border/50">
                   <div className="flex items-center gap-3">
-                    <AlertTriangle className="w-5 h-5 text-orange-600" />
-                    <span className="text-gray-900">{alert.message}</span>
+                    <AlertTriangle className="w-5 h-5 text-accent" />
+                    <span className="text-foreground">{alert.message}</span>
                     <Badge variant={alert.priority === 'high' ? 'destructive' : 'outline'}>
                       {alert.priority}
                     </Badge>
                   </div>
-                  <Button size="sm" onClick={alert.action}>
+                  <Button size="sm" onClick={alert.action} className="btn-primary">
                     View Details
                   </Button>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => onNavigate('students')}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Students</p>
-                <p className="text-3xl font-bold text-blue-600">{dashboardData.totalStudents}</p>
-              </div>
-              <Users className="w-12 h-12 text-blue-600" />
+      <div className="medical-grid animate-slide-up">
+        <div className="stats-card group" onClick={() => onNavigate('students')}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Students</p>
+              <p className="text-3xl font-bold text-primary">{dashboardData.totalStudents}</p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="icon-container bg-primary/10">
+              <Users className="w-6 h-6 text-primary" />
+            </div>
+          </div>
+        </div>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => onNavigate('clinic')}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Today's Visits</p>
-                <p className="text-3xl font-bold text-green-600">{dashboardData.todayVisits}</p>
-              </div>
-              <Stethoscope className="w-12 h-12 text-green-600" />
+        <div className="stats-card group" onClick={() => onNavigate('clinic')}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Today's Visits</p>
+              <p className="text-3xl font-bold text-secondary">{dashboardData.todayVisits}</p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="icon-container bg-secondary/10">
+              <Stethoscope className="w-6 h-6 text-secondary" />
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Chronic Conditions</p>
-                <p className="text-3xl font-bold text-orange-600">{dashboardData.chronicConditions}</p>
-              </div>
-              <Shield className="w-12 h-12 text-orange-600" />
+        <div className="stats-card group">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Chronic Conditions</p>
+              <p className="text-3xl font-bold text-accent">{dashboardData.chronicConditions}</p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="icon-container bg-accent/10">
+              <Shield className="w-6 h-6 text-accent" />
+            </div>
+          </div>
+        </div>
 
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => onNavigate('medications')}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Medications Alert</p>
-                <p className="text-3xl font-bold text-red-600">{dashboardData.lowStockMedications}</p>
-              </div>
-              <AlertTriangle className="w-12 h-12 text-red-600" />
+        <div className="stats-card group" onClick={() => onNavigate('medications')}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Medications Alert</p>
+              <p className="text-3xl font-bold text-destructive">{dashboardData.lowStockMedications}</p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="icon-container bg-destructive/10">
+              <AlertTriangle className="w-6 h-6 text-destructive" />
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Follow-ups Due</p>
-                <p className="text-3xl font-bold text-purple-600">{dashboardData.pendingFollowUps}</p>
-              </div>
-              <Clock className="w-12 h-12 text-purple-600" />
+        <div className="stats-card group">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Follow-ups Due</p>
+              <p className="text-3xl font-bold text-accent">{dashboardData.pendingFollowUps}</p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="icon-container bg-accent/10">
+              <Clock className="w-6 h-6 text-accent" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up">
         {/* Recent Clinic Visits */}
-        <Card>
-          <CardHeader>
+        <div className="card-professional">
+          <div className="p-6 border-b border-border/50">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+              <h3 className="flex items-center gap-2 text-foreground font-semibold">
                 <Activity className="w-5 h-5" />
                 Recent Clinic Visits
-              </CardTitle>
+              </h3>
               <Button variant="outline" size="sm" onClick={() => onNavigate('clinic')}>
                 View All
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div className="p-6">
             {dashboardData.recentVisits.length > 0 ? (
               <div className="space-y-4">
                 {dashboardData.recentVisits.map((visit: any, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={index} className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-semibold text-foreground">
                         {visit.students?.full_name || 'Unknown Student'}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-muted-foreground">
                         {visit.students?.student_id || 'N/A'} | {visit.students?.form_level?.replace('_', ' ').toUpperCase() || 'N/A'}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-muted-foreground">
                         {visit.visit_type?.replace('_', ' ') || 'General'} - {new Date(visit.visit_date).toLocaleDateString()}
                       </p>
                     </div>
@@ -425,8 +423,8 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Stethoscope className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <div className="text-center py-8 text-muted-foreground">
+                <Stethoscope className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
                 <p>No recent clinic visits</p>
                 <Button 
                   variant="outline" 
@@ -438,44 +436,44 @@ const DashboardHome = ({ userRole, onNavigate }: DashboardHomeProps) => {
                 </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Upcoming Tasks */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className="card-professional">
+          <div className="p-6 border-b border-border/50">
+            <h3 className="flex items-center gap-2 text-foreground font-semibold">
               <Calendar className="w-5 h-5" />
               Upcoming Tasks
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-6">
             {dashboardData.upcomingTasks.length > 0 ? (
               <div className="space-y-4">
                 {dashboardData.upcomingTasks.map((task: any, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                  <div key={index} className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/20">
                     <div>
-                      <p className="font-semibold text-blue-900">
+                      <p className="font-semibold text-foreground">
                         Follow-up: {task.students?.full_name || 'Unknown Student'}
                       </p>
-                      <p className="text-sm text-blue-700">
+                      <p className="text-sm text-muted-foreground">
                         Due: {task.follow_up_date ? new Date(task.follow_up_date).toLocaleDateString() : 'No date set'}
                       </p>
                     </div>
-                    <Badge className="bg-blue-600 text-white">
+                    <Badge className="bg-primary text-primary-foreground">
                       Follow-up
                     </Badge>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
                 <p>No upcoming tasks</p>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Quick Actions */}
