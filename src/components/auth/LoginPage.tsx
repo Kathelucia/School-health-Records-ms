@@ -181,15 +181,15 @@ const LoginPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-2xl border-0 bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-medical-50 via-background to-medical-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md card-professional border shadow-medical">
         <CardHeader className="text-center space-y-4 pb-6">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center shadow-lg">
-            <Heart className="w-8 h-8 text-white" />
+          <div className="icon-container bg-gradient-to-r from-primary to-accent mx-auto animate-pulse-glow">
+            <Heart className="w-8 h-8 text-primary-foreground" />
           </div>
           <div>
-            <CardTitle className="text-3xl font-bold text-gray-900">SHRMS</CardTitle>
-            <CardDescription className="text-gray-600 text-lg">
+            <CardTitle className="text-3xl font-bold text-foreground">SHRMS</CardTitle>
+            <CardDescription className="text-muted-foreground text-lg">
               School Health Records Management System
             </CardDescription>
           </div>
@@ -212,7 +212,7 @@ const LoginPage = () => {
           <form onSubmit={handleAuth} className="space-y-6">
             {isSignUp && (
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-sm font-semibold text-gray-700">
+                <Label htmlFor="fullName" className="text-sm font-semibold text-foreground">
                   Full Name *
                 </Label>
                 <Input
@@ -221,14 +221,14 @@ const LoginPage = () => {
                   placeholder="Enter your full name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="h-12 bg-white border-gray-300 focus:border-blue-500"
+                  className="input-professional h-12"
                   required={isSignUp}
                 />
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+              <Label htmlFor="email" className="text-sm font-semibold text-foreground">
                 Email Address *
               </Label>
               <Input
@@ -237,13 +237,13 @@ const LoginPage = () => {
                 placeholder="your.email@school.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-12 bg-white border-gray-300 focus:border-blue-500"
+                className="input-professional h-12"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+              <Label htmlFor="password" className="text-sm font-semibold text-foreground">
                 Password *
               </Label>
               <div className="relative">
@@ -253,14 +253,14 @@ const LoginPage = () => {
                   placeholder="Enter your password (min. 6 characters)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pr-10 h-12 bg-white border-gray-300 focus:border-blue-500"
+                  className="input-professional pr-10 h-12"
                   required
                   minLength={6}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -270,7 +270,7 @@ const LoginPage = () => {
             {isSignUp && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-sm font-semibold text-gray-700">
+                  <Label htmlFor="confirmPassword" className="text-sm font-semibold text-foreground">
                     Confirm Password *
                   </Label>
                   <div className="relative">
@@ -280,13 +280,13 @@ const LoginPage = () => {
                       placeholder="Confirm your password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pr-10 h-12 bg-white border-gray-300 focus:border-blue-500"
+                      className="input-professional pr-10 h-12"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -294,23 +294,23 @@ const LoginPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="role" className="text-sm font-semibold text-gray-700">
+                  <Label htmlFor="role" className="text-sm font-semibold text-foreground">
                     Role *
                   </Label>
                   <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger className="h-12 bg-white border-gray-300 focus:border-blue-500">
+                    <SelectTrigger className="input-professional h-12">
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-card border border-border">
                       {roles.map((roleOption) => {
                         const Icon = roleOption.icon;
                         return (
-                          <SelectItem key={roleOption.value} value={roleOption.value} className="hover:bg-gray-50">
+                          <SelectItem key={roleOption.value} value={roleOption.value} className="hover:bg-muted/50">
                             <div className="flex items-start space-x-3 py-2">
-                              <Icon className="w-5 h-5 mt-0.5 text-blue-600" />
+                              <Icon className="w-5 h-5 mt-0.5 text-primary" />
                               <div>
-                                <span className="font-semibold text-gray-900">{roleOption.label}</span>
-                                <p className="text-xs text-gray-500 mt-1">{roleOption.description}</p>
+                                <span className="font-semibold text-foreground">{roleOption.label}</span>
+                                <p className="text-xs text-muted-foreground mt-1">{roleOption.description}</p>
                               </div>
                             </div>
                           </SelectItem>
@@ -324,7 +324,7 @@ const LoginPage = () => {
 
             <Button 
               type="submit" 
-              className="w-full h-12 bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-semibold shadow-lg" 
+              className="btn-primary w-full h-12 font-semibold" 
               disabled={loading}
             >
               {loading ? (
@@ -358,7 +358,7 @@ const LoginPage = () => {
                 setFullName('');
                 setRole('nurse');
               }}
-              className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
+              className="text-primary hover:text-primary/80 font-medium text-sm transition-colors"
               disabled={loading}
             >
               {isSignUp 
@@ -369,13 +369,13 @@ const LoginPage = () => {
           </div>
 
           {isSignUp && (
-            <div className="text-xs text-gray-500 text-center bg-blue-50 p-3 rounded-lg">
+            <div className="text-xs text-muted-foreground text-center bg-muted/20 p-3 rounded-lg">
               <p className="font-medium mb-1">Note:</p>
               <p>After creating your account, you may need to verify your email address before you can sign in.</p>
             </div>
           )}
 
-          <div className="text-xs text-gray-500 text-center border-t pt-4">
+          <div className="text-xs text-muted-foreground text-center border-t border-border pt-4">
             <div className="flex items-center justify-center space-x-2">
               <Shield className="w-3 h-3" />
               <p>Secure access for authorized school personnel only</p>
